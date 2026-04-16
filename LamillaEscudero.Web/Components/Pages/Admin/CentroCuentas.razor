@@ -1,0 +1,264 @@
+﻿@page "/admin/cuentas"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.ICentroCuentasService CuentasService
+@inject LamillaEscudero.Application.Abstractions.IClienteService ClienteService
+
+<PageTitle>Centro de Cuentas — Lamilla Escudero</PageTitle>
+
+<div class="row g-4">
+
+    @* ══════════════════════════════════════════════
+       PANEL CREAR USUARIO
+       ══════════════════════════════════════════════ *@
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <strong><i class="bi bi-person-plus me-2" style="color:var(--gold);"></i>Crear cuenta de acceso</strong>
+            </div>
+            <div class="card-body">
+
+                @if (!string.IsNullOrWhiteSpace(formError))
+                {
+                    <div class="alert alert-danger small py-2 mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>@formError
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(formSuccess))
+                {
+                    <div class="alert alert-info small py-2 mb-3">
+                        <i class="bi bi-check-circle me-1"></i>@formSuccess
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Nombre completo</label>
+                    <input class="form-control" @bind="form.FullName" placeholder="Nombre del usuario" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Correo electrónico</label>
+                    <input class="form-control" type="email" @bind="form.Email"
+                           placeholder="usuario@ejemplo.com" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cédula <span class="text-muted small">(opcional)</span></label>
+                    <input class="form-control" @bind="form.Cedula" placeholder="0000000000" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Contraseña <span class="text-muted small">(mín. 8 caracteres)</span></label>
+                    <input class="form-control" type="password" @bind="form.Password" placeholder="••••••••" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Rol</label>
+                    <select class="form-select" @bind="form.Rol" @bind:after="OnRolChanged">
+                        <option value="Asistente">Asistente</option>
+                        <option value="Abogado">Abogado</option>
+                        <option value="Administrador">Administrador</option>
+                        <option value="Cliente">Cliente (portal privado)</option>
+                    </select>
+                </div>
+
+                @* Selector de cliente — solo visible para rol Cliente *@
+                @if (form.Rol == "Cliente")
+                {
+                    <div class="mb-3 p-3 rounded" style="background: rgba(184,150,62,.06); border: 1px dashed rgba(184,150,62,.3);">
+                        <label class="form-label" style="color: var(--gold);">
+                            <i class="bi bi-link-45deg me-1"></i>Vincular con cliente existente
+                            <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" @bind="form.ClienteId">
+                            <option value="">— Seleccione el cliente —</option>
+                            @foreach (var c in clientes)
+                            {
+                                <option value="@c.Id">@c.Nombres @(c.Cedula is not null ? $"({c.Cedula})" : "")</option>
+                            }
+                        </select>
+                        <div class="form-text" style="color: var(--gold); opacity:.8;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            El cliente podrá ver su timeline de causas al iniciar sesión en <strong>/mi-portal</strong>.
+                        </div>
+                    </div>
+                }
+
+                <button class="btn btn-dark w-100" @onclick="CrearUsuario" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-person-check me-1"></i>Crear cuenta
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════
+       LISTA DE USUARIOS
+       ══════════════════════════════════════════════ *@
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <strong><i class="bi bi-people me-2" style="color:var(--gold);"></i>Usuarios del sistema (@usuarios.Count)</strong>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="Recargar">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Usuario</th>
+                                <th>Rol</th>
+                                <th>Estado</th>
+                                <th class="text-end pe-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var u in usuarios)
+                            {
+                                <tr>
+                                    <td class="ps-3">
+                                        <div class="fw-medium small" style="color:var(--navy);">
+                                            @(u.FullName ?? u.Email)
+                                        </div>
+                                        <div class="text-muted" style="font-size:.72rem;">@u.Email</div>
+                                        @if (!string.IsNullOrWhiteSpace(u.ClienteVinculadoNombre))
+                                        {
+                                            <div style="font-size:.68rem; color: var(--gold);">
+                                                <i class="bi bi-link-45deg"></i> @u.ClienteVinculadoNombre
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @foreach (var r in u.Roles)
+                                        {
+                                            <span class="dash-badge @GetRolBadge(r) me-1">@r</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (u.IsActive)
+                                        {
+                                            <span class="dash-badge dash-badge-ok">Activo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="dash-badge" style="background:#fee2e2;color:#991b1b;">Inactivo</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <button class="btn btn-sm btn-outline-secondary me-1"
+                                                title="@(u.IsActive ? "Desactivar" : "Activar")"
+                                                @onclick="() => ToggleActivo(u.Id)">
+                                            <i class="bi @(u.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                title="Eliminar"
+                                                @onclick="() => Eliminar(u.Id)">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!usuarios.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted small">
+                                        <i class="bi bi-people me-1"></i>Sin usuarios registrados.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<LamillaEscudero.Application.Models.Cuentas.UsuarioResponse> usuarios = new();
+    private List<LamillaEscudero.Application.Models.Clientes.ClienteResponse> clientes = new();
+    private LamillaEscudero.Application.Models.Cuentas.CrearUsuarioRequest form = new();
+    private string? formError;
+    private string? formSuccess;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Recargar();
+        clientes = await ClienteService.GetAllAsync();
+    }
+
+    private async Task Recargar()
+    {
+        usuarios = await CuentasService.GetAllUsuariosAsync();
+    }
+
+    private void OnRolChanged()
+    {
+        if (form.Rol != "Cliente") form.ClienteId = null;
+    }
+
+    private async Task CrearUsuario()
+    {
+        formError = null;
+        formSuccess = null;
+        isSaving = true;
+
+        try
+        {
+            var clienteId = form.ClienteId.HasValue ? form.ClienteId : null;
+            var req = new LamillaEscudero.Application.Models.Cuentas.CrearUsuarioRequest
+            {
+                Email = form.Email,
+                Password = form.Password,
+                FullName = form.FullName,
+                Cedula = form.Cedula,
+                Rol = form.Rol,
+                ClienteId = clienteId
+            };
+
+            var (ok, err) = await CuentasService.CrearUsuarioAsync(req);
+            if (ok)
+            {
+                formSuccess = $"Cuenta '{form.Email}' creada correctamente con rol {form.Rol}.";
+                form = new LamillaEscudero.Application.Models.Cuentas.CrearUsuarioRequest();
+                await Recargar();
+            }
+            else
+            {
+                formError = err ?? "Error desconocido al crear la cuenta.";
+            }
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ToggleActivo(string userId)
+    {
+        await CuentasService.ToggleActivoAsync(userId);
+        await Recargar();
+    }
+
+    private async Task Eliminar(string userId)
+    {
+        await CuentasService.EliminarUsuarioAsync(userId);
+        await Recargar();
+    }
+
+    private static string GetRolBadge(string rol) => rol switch
+    {
+        "Administrador" => "dash-badge-danger",
+        "Abogado" => "dash-badge-warning",
+        "Asistente" => "dash-badge-ok",
+        "Cliente" => "dash-badge", // ✅ Le damos estilo base
+        _ => "dash-badge"
+    };
+}

@@ -1,0 +1,1088 @@
+﻿@page "/admin/clientes"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject IClienteService ClienteService
+@using LamillaEscudero.Application.Models.Abonos
+
+<PageTitle>Clientes</PageTitle>
+
+<!-- ═══════════════════════════════════════════════
+     OVERLAY DE HONORARIOS Y ABONOS
+     ═══════════════════════════════════════════════ -->
+@if (overlayVisible && clienteOverlay is not null)
+{
+    <div class="hon-backdrop" @onclick="CerrarOverlay">
+        <div class="hon-panel" @onclick:stopPropagation="true">
+
+            <!-- Cabecera del overlay -->
+            <div class="hon-panel-header">
+                <div>
+                    <div class="hon-panel-eyebrow">Control de Honorarios</div>
+                    <div class="hon-panel-title">@clienteOverlay.Nombres</div>
+                    @if (!string.IsNullOrWhiteSpace(clienteOverlay.Cedula))
+                    {
+                        <div class="hon-panel-sub">CI: @clienteOverlay.Cedula</div>
+                    }
+                </div>
+                <button class="hon-close-btn" @onclick="CerrarOverlay">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <!-- KPIs financieros -->
+            <div class="hon-kpis">
+                <div class="hon-kpi hon-kpi-navy">
+                    <div class="hon-kpi-label">Total Pactado</div>
+                    <div class="hon-kpi-value">$@clienteOverlay.TotalHonorarios.ToString("N2")</div>
+                </div>
+                <div class="hon-kpi hon-kpi-green">
+                    <div class="hon-kpi-label">Total Pagado</div>
+                    <div class="hon-kpi-value">$@clienteOverlay.TotalAbonado.ToString("N2")</div>
+                </div>
+                <div class="hon-kpi @(clienteOverlay.SaldoPendiente > 0 ? "hon-kpi-red" : "hon-kpi-green-dark")">
+                    <div class="hon-kpi-label">Saldo Pendiente</div>
+                    <div class="hon-kpi-value">$@clienteOverlay.SaldoPendiente.ToString("N2")</div>
+                </div>
+            </div>
+
+            <!-- Barra de progreso de pago -->
+            @{
+                var pct = clienteOverlay.TotalHonorarios > 0
+                ? Math.Min(100, (double)(clienteOverlay.TotalAbonado / clienteOverlay.TotalHonorarios * 100))
+                : 0;
+            }
+            <div class="hon-progress-wrap">
+                <div class="hon-progress-bar">
+                    <div class="hon-progress-fill" style="width:@(pct.ToString("F1"))%"></div>
+                </div>
+                <span class="hon-progress-label">@pct.ToString("F0")% pagado</span>
+            </div>
+
+            <div class="hon-body">
+                <!-- ── Fijar honorario pactado ── -->
+                <div class="hon-section">
+                    <div class="hon-section-title">
+                        <i class="bi bi-cash-coin me-1"></i> Honorario Pactado
+                    </div>
+                    <div class="hon-inline-form">
+                        <div class="hon-input-wrap">
+                            <span class="hon-input-prefix">$</span>
+                            <input class="hon-input" type="number" min="0" step="0.01"
+                                   placeholder="0.00"
+                                   @bind="nuevoHonorario" @bind:event="oninput" />
+                        </div>
+                        <button class="hon-btn hon-btn-navy" @onclick="FijarHonorario"
+                                disabled="@guardandoHonorario">
+                            @if (guardandoHonorario)
+                            {
+                                <span class="hon-spinner"></span>
+                            }
+                            else
+                            {
+
+                                <span>Fijar Honorario</span>
+                            }
+                        </button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(msgHonorario))
+                    {
+                        <div class="hon-msg @(errorHonorario ? "hon-msg-error" : "hon-msg-ok")">
+                            @msgHonorario
+                        </div>
+                    }
+                </div>
+
+                <!-- ── Nuevo abono ── -->
+                <div class="hon-section">
+                    <div class="hon-section-title">
+                        <i class="bi bi-plus-circle me-1"></i> Registrar Abono
+                    </div>
+                    <div class="hon-abono-form">
+                        <div class="hon-abono-row">
+                            <div class="hon-field">
+                                <label class="hon-label">Monto</label>
+                                <div class="hon-input-wrap">
+                                    <span class="hon-input-prefix">$</span>
+                                    <input class="hon-input" type="number" min="0.01" step="0.01"
+                                           placeholder="0.00" @bind="abonoForm.Monto" />
+                                </div>
+                            </div>
+                            <div class="hon-field">
+                                <label class="hon-label">Fecha</label>
+                                <input class="hon-input hon-input-plain" type="date"
+                                       @bind="fechaAbonoLocal" />
+                            </div>
+                        </div>
+                        <div class="hon-field" style="margin-top:.625rem">
+                            <label class="hon-label">Observación</label>
+                            <input class="hon-input hon-input-plain" type="text"
+                                   placeholder="Ej: Transferencia, Efectivo, Cheque…"
+                                   @bind="abonoForm.Observacion" />
+                        </div>
+                        <button class="hon-btn hon-btn-gold mt-2" @onclick="RegistrarAbono"
+                                disabled="@guardandoAbono">
+                            @if (guardandoAbono)
+                            {
+                                <span class="hon-spinner"></span>
+                            }
+                            else
+                            {
+
+                                <span><i class="bi bi-plus-lg me-1"></i>Registrar Abono</span>
+                            }
+                        </button>
+                        @if (!string.IsNullOrWhiteSpace(msgAbono))
+                        {
+                            <div class="hon-msg @(errorAbono ? "hon-msg-error" : "hon-msg-ok")">
+                                @msgAbono
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- ── Historial de abonos ── -->
+                <div class="hon-section hon-section-last">
+                    <div class="hon-section-title">
+                        <i class="bi bi-clock-history me-1"></i> Historial de Abonos
+                        <span class="hon-badge ms-2">@abonos.Count</span>
+                    </div>
+
+                    @if (cargandoAbonos)
+                    {
+                        <div class="hon-loading">Cargando historial…</div>
+                    }
+                    else if (!abonos.Any())
+                    {
+                        <div class="hon-empty">
+                            <i class="bi bi-inbox"></i>
+                            <span>No hay abonos registrados aún.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="hon-table-wrap">
+                            <table class="hon-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Monto</th>
+                                        <th>Observación</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var a in abonos)
+                                    {
+                                        <tr>
+                                            <td>@a.FechaAbono.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                                            <td class="hon-monto">$@a.Monto.ToString("N2")</td>
+                                            <td class="hon-obs">@(a.Observacion ?? "—")</td>
+                                            <td class="text-end">
+                                                <button class="hon-del-btn"
+                                                        title="Eliminar abono"
+                                                        @onclick="() => EliminarAbono(a.Id)">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td class="hon-tfoot-label">Total abonado</td>
+                                        <td class="hon-monto hon-tfoot-total">
+                                            $@abonos.Sum(a => a.Monto).ToString("N2")
+                                        </td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ═══════════════════════════════════════════════
+     CONTENIDO PRINCIPAL
+     ═══════════════════════════════════════════════ -->
+<div class="row g-4">
+
+    <!-- Formulario de cliente -->
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <strong>@(editingId is null ? "Nuevo cliente" : "Editar cliente")</strong>
+            </div>
+            <div class="card-body">
+                <EditForm Model="form" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
+
+                    <div class="mb-2">
+                        <label class="form-label">Nombres</label>
+                        <InputText class="form-control" @bind-Value="form.Nombres" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Cédula</label>
+                        <InputText class="form-control" @bind-Value="form.Cedula" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Email</label>
+                        <InputText class="form-control" @bind-Value="form.Email" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Teléfono</label>
+                        <InputText class="form-control" @bind-Value="form.Telefono" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Dirección</label>
+                        <InputText class="form-control" @bind-Value="form.Direccion" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="form.Observaciones" />
+                    </div>
+
+                    <button class="btn btn-dark" type="submit">Guardar</button>
+                    <button class="btn btn-outline-secondary ms-2" type="button" @onclick="Limpiar">Limpiar</button>
+                </EditForm>
+
+                @if (!string.IsNullOrWhiteSpace(message))
+                {
+                    <div class="alert alert-info mt-3">@message</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Listado de clientes -->
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>Listado</strong></div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Cédula</th>
+                            <th>Teléfono</th>
+                            <th class="text-end" style="min-width:210px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in clientes)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="fw-medium">@c.Nombres</div>
+                                    @if (c.TotalHonorarios > 0)
+                                    {
+                                        <!-- Mini indicador de pago por fila -->
+                                        <div class="cli-mini-bar-wrap">
+                                            @{
+                                                var p = c.TotalHonorarios > 0
+                                                ? Math.Min(100, (double)(c.TotalAbonado / c.TotalHonorarios * 100))
+                                                : 0;
+                                            }
+                                            <div class="cli-mini-bar">
+                                                <div class="cli-mini-fill @(p >= 100 ? "cli-fill-green" : "cli-fill-gold")"
+                                                     style="width:@(p.ToString("F0"))%"></div>
+                                            </div>
+                                            <span class="cli-mini-label">
+                                                @p.ToString("F0")% · Saldo $@c.SaldoPendiente.ToString("N0")
+                                            </span>
+                                        </div>
+                                    }
+                                </td>
+                                <td>@c.Cedula</td>
+                                <td>@c.Telefono</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm hon-action-btn me-1"
+                                            title="Gestión de Honorarios y Abonos"
+                                            @onclick="() => AbrirOverlay(c)">
+                                        <i class="bi bi-cash-stack me-1"></i>Honorarios
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => Editar(c)">
+                                        Editar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => Eliminar(c.Id)">
+                                        Eliminar
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     ESTILOS SCOPED (overlay + tabla inline)
+     ═══════════════════════════════════════════════ -->
+<style>
+    /* ── Botón Honorarios ─────────────────────────────── */
+    .hon-action-btn {
+        background: linear-gradient(135deg, #0B1F3A, #142947);
+        color: #D4AF6A;
+        border: 1px solid rgba(184,150,62,.3);
+        border-radius: 6px;
+        font-size: .78rem;
+        font-weight: 500;
+        transition: all .18s;
+    }
+
+        .hon-action-btn:hover {
+            background: linear-gradient(135deg, #142947, #1d3a5f);
+            color: #f0d99a;
+            border-color: rgba(184,150,62,.55);
+            transform: translateY(-1px);
+        }
+
+    /* ── Mini progress bar en fila ────────────────────── */
+    .cli-mini-bar-wrap {
+        margin-top: 3px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .cli-mini-bar {
+        flex: 1;
+        height: 4px;
+        background: #E8E6E1;
+        border-radius: 2px;
+        overflow: hidden;
+        max-width: 80px;
+    }
+
+    .cli-mini-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width .4s;
+    }
+
+    .cli-fill-gold {
+        background: #B8963E;
+    }
+
+    .cli-fill-green {
+        background: #16a34a;
+    }
+
+    .cli-mini-label {
+        font-size: .68rem;
+        color: #8A8A8E;
+        white-space: nowrap;
+    }
+
+    /* ── Backdrop ─────────────────────────────────────── */
+    .hon-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(7,22,41,.55);
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: honFadeIn .18s ease;
+    }
+
+    @@keyframes honFadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* ── Panel principal ──────────────────────────────── */
+    .hon-panel {
+        background: #fff;
+        border-radius: 20px;
+        width: 100%;
+        max-width: 680px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 24px 80px rgba(7,22,41,.28);
+        animation: honSlideUp .22s ease;
+    }
+
+    @@keyframes honSlideUp {
+        from {
+            opacity: 0;
+            transform: translateY(24px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .hon-panel::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .hon-panel::-webkit-scrollbar-thumb {
+        background: #E8E6E1;
+        border-radius: 3px;
+    }
+
+    /* ── Header ───────────────────────────────────────── */
+    .hon-panel-header {
+        background: linear-gradient(135deg, #0B1F3A 0%, #142947 100%);
+        padding: 1.5rem 1.75rem;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        border-radius: 20px 20px 0 0;
+    }
+
+    .hon-panel-eyebrow {
+        font-size: .7rem;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: #B8963E;
+        font-weight: 600;
+        margin-bottom: .3rem;
+    }
+
+    .hon-panel-title {
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.1;
+    }
+
+    .hon-panel-sub {
+        font-size: .8rem;
+        color: rgba(255,255,255,.45);
+        margin-top: .2rem;
+    }
+
+    .hon-close-btn {
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 8px;
+        color: rgba(255,255,255,.6);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all .15s;
+        flex-shrink: 0;
+    }
+
+        .hon-close-btn:hover {
+            background: rgba(255,255,255,.18);
+            color: #fff;
+        }
+
+    /* ── KPIs ─────────────────────────────────────────── */
+    .hon-kpis {
+        display: grid;
+        grid-template-columns: repeat(3,1fr);
+        gap: .875rem;
+        padding: 1.25rem 1.75rem .75rem;
+    }
+
+    .hon-kpi {
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+    }
+
+    .hon-kpi-label {
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+        opacity: .75;
+        margin-bottom: .35rem;
+    }
+
+    .hon-kpi-value {
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .hon-kpi-navy {
+        background: #0B1F3A;
+        color: #D4AF6A;
+    }
+
+    .hon-kpi-green {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .hon-kpi-red {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .hon-kpi-green-dark {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    /* ── Progress bar ─────────────────────────────────── */
+    .hon-progress-wrap {
+        padding: .25rem 1.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+
+    .hon-progress-bar {
+        flex: 1;
+        height: 8px;
+        background: #E8E6E1;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .hon-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #B8963E, #D4AF6A);
+        border-radius: 4px;
+        transition: width .5s ease;
+    }
+
+    .hon-progress-label {
+        font-size: .75rem;
+        color: #8A8A8E;
+        white-space: nowrap;
+        min-width: 70px;
+        text-align: right;
+    }
+
+    /* ── Body y secciones ─────────────────────────────── */
+    .hon-body {
+        padding: 0 1.75rem 1.75rem;
+    }
+
+    .hon-section {
+        border-top: 1px solid #E8E6E1;
+        padding-top: 1.25rem;
+        margin-top: 1.25rem;
+    }
+
+        .hon-section:first-child {
+            border-top: none;
+            margin-top: 0;
+        }
+
+    .hon-section-last {
+        padding-bottom: 0;
+    }
+
+    .hon-section-title {
+        font-size: .8rem;
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: #0B1F3A;
+        margin-bottom: .875rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .hon-badge {
+        background: #0B1F3A;
+        color: #D4AF6A;
+        font-size: .65rem;
+        padding: .15rem .5rem;
+        border-radius: 100px;
+        font-weight: 700;
+    }
+
+    /* ── Inputs y formularios ─────────────────────────── */
+    .hon-inline-form {
+        display: flex;
+        gap: .75rem;
+        align-items: stretch;
+    }
+
+    .hon-input-wrap {
+        position: relative;
+        flex: 1;
+    }
+
+    .hon-input-prefix {
+        position: absolute;
+        left: .875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #8A8A8E;
+        font-size: .9rem;
+        pointer-events: none;
+        font-weight: 600;
+    }
+
+    .hon-input {
+        width: 100%;
+        padding: .65rem .875rem .65rem 1.75rem;
+        border: 1.5px solid #E8E6E1;
+        border-radius: 8px;
+        background: #F8F6F1;
+        font-size: .9rem;
+        color: #1C1C1E;
+        transition: border-color .15s, box-shadow .15s;
+        outline: none;
+        font-family: inherit;
+    }
+
+        .hon-input:focus {
+            border-color: #B8963E;
+            box-shadow: 0 0 0 3px rgba(184,150,62,.12);
+            background: #fff;
+        }
+
+    .hon-input-plain {
+        padding-left: .875rem;
+    }
+
+    .hon-label {
+        display: block;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #1C1C1E;
+        margin-bottom: .35rem;
+    }
+
+    .hon-field {
+        flex: 1;
+    }
+
+    .hon-abono-form {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hon-abono-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .75rem;
+    }
+
+    /* ── Botones de acción ────────────────────────────── */
+    .hon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        padding: .65rem 1.25rem;
+        border-radius: 8px;
+        font-size: .875rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all .15s;
+        font-family: inherit;
+        white-space: nowrap;
+    }
+
+        .hon-btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+    .hon-btn-navy {
+        background: #0B1F3A;
+        color: #fff;
+    }
+
+        .hon-btn-navy:hover:not(:disabled) {
+            background: #142947;
+        }
+
+    .hon-btn-gold {
+        background: #B8963E;
+        color: #fff;
+    }
+
+        .hon-btn-gold:hover:not(:disabled) {
+            background: #a07e30;
+        }
+
+    .mt-2 {
+        margin-top: .625rem !important;
+    }
+
+    /* ── Mensajes ─────────────────────────────────────── */
+    .hon-msg {
+        font-size: .8rem;
+        margin-top: .5rem;
+        padding: .45rem .75rem;
+        border-radius: 6px;
+    }
+
+    .hon-msg-ok {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .hon-msg-error {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    /* ── Spinner ──────────────────────────────────────── */
+    .hon-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin .6s linear infinite;
+        display: inline-block;
+    }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* ── Tabla de historial ───────────────────────────── */
+    .hon-table-wrap {
+        border-radius: 10px;
+        border: 1px solid #E8E6E1;
+        overflow: hidden;
+    }
+
+    .hon-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: .875rem;
+    }
+
+        .hon-table thead th {
+            background: #F8F6F1;
+            padding: .55rem .875rem;
+            font-size: .68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: #8A8A8E;
+            border-bottom: 1px solid #E8E6E1;
+        }
+
+        .hon-table tbody td {
+            padding: .65rem .875rem;
+            border-bottom: 1px solid rgba(0,0,0,.04);
+            vertical-align: middle;
+        }
+
+        .hon-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .hon-table tbody tr:hover td {
+            background: #F8F6F1;
+        }
+
+        .hon-table tfoot td {
+            padding: .65rem .875rem;
+            border-top: 1px solid #E8E6E1;
+            background: #F8F6F1;
+        }
+
+    .hon-monto {
+        font-weight: 600;
+        color: #15803d;
+        font-size: .9rem;
+    }
+
+    .hon-obs {
+        color: #8A8A8E;
+        font-size: .82rem;
+    }
+
+    .hon-tfoot-label {
+        font-size: .75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: #8A8A8E;
+    }
+
+    .hon-tfoot-total {
+        color: #0B1F3A !important;
+        font-size: 1rem !important;
+    }
+
+    .hon-del-btn {
+        background: none;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        color: #ccc;
+        padding: .25rem .45rem;
+        cursor: pointer;
+        transition: all .15s;
+        font-size: .85rem;
+    }
+
+        .hon-del-btn:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+
+    /* ── Estados vacíos / carga ───────────────────────── */
+    .hon-loading {
+        font-size: .85rem;
+        color: #8A8A8E;
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .hon-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .5rem;
+        padding: 2rem;
+        color: #8A8A8E;
+        font-size: .85rem;
+    }
+
+        .hon-empty i {
+            font-size: 1.5rem;
+        }
+
+    @@media (max-width: 540px) {
+        .hon-kpis {
+            grid-template-columns: 1fr;
+        }
+
+        .hon-abono-row {
+            grid-template-columns: 1fr;
+        }
+
+        .hon-inline-form {
+            flex-direction: column;
+        }
+    }
+</style>
+
+@code {
+    // ── Estado general ────────────────────────────────────────
+    private List<ClienteResponse> clientes = new();
+    private ClienteCreateRequest form = new();
+    private Guid? editingId;
+    private string? message;
+
+    // ── Estado del overlay de honorarios ──────────────────────
+    private bool overlayVisible = false;
+    private ClienteResponse? clienteOverlay = null;
+    private List<AbonoResponse> abonos = new();
+    private bool cargandoAbonos = false;
+
+    // ── Fijar honorario ───────────────────────────────────────
+    private decimal nuevoHonorario;
+    private bool guardandoHonorario = false;
+    private string? msgHonorario;
+    private bool errorHonorario;
+
+    // ── Nuevo abono ───────────────────────────────────────────
+    private AbonoCreateRequest abonoForm = new();
+    private DateTime fechaAbonoLocal = DateTime.Today;
+    private bool guardandoAbono = false;
+    private string? msgAbono;
+    private bool errorAbono;
+
+    // ─────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync() => await Cargar();
+
+    private async Task Cargar()
+        => clientes = await ClienteService.GetAllAsync();
+
+    // ── CRUD de cliente ───────────────────────────────────────
+
+    private async Task Guardar()
+    {
+        if (editingId is null)
+        {
+            await ClienteService.CreateAsync(form);
+            message = "Cliente creado correctamente.";
+        }
+        else
+        {
+            var upd = new ClienteUpdateRequest
+            {
+                Nombres = form.Nombres,
+                Cedula = form.Cedula,
+                Email = form.Email,
+                Telefono = form.Telefono,
+                Direccion = form.Direccion,
+                Observaciones = form.Observaciones,
+                IsActive = true
+            };
+            await ClienteService.UpdateAsync(editingId.Value, upd);
+            message = "Cliente actualizado correctamente.";
+        }
+        await Cargar();
+        Limpiar();
+    }
+
+    private void Editar(ClienteResponse c)
+    {
+        editingId = c.Id;
+        form = new ClienteCreateRequest
+        {
+            Nombres = c.Nombres,
+            Cedula = c.Cedula,
+            Email = c.Email,
+            Telefono = c.Telefono,
+            Direccion = c.Direccion,
+            Observaciones = c.Observaciones
+        };
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await ClienteService.DeleteAsync(id);
+        await Cargar();
+        message = "Cliente eliminado.";
+    }
+
+    private void Limpiar()
+    {
+        editingId = null;
+        form = new ClienteCreateRequest();
+    }
+
+    // ── Overlay de honorarios ─────────────────────────────────
+
+    private async Task AbrirOverlay(ClienteResponse c)
+    {
+        clienteOverlay = c;
+        nuevoHonorario = c.TotalHonorarios;
+        msgHonorario = null;
+        msgAbono = null;
+        abonoForm = new AbonoCreateRequest { ClienteId = c.Id, FechaAbono = DateTime.UtcNow };
+        fechaAbonoLocal = DateTime.Today;
+        overlayVisible = true;
+        await CargarAbonos();
+    }
+
+    private void CerrarOverlay()
+    {
+        overlayVisible = false;
+        clienteOverlay = null;
+        abonos.Clear();
+    }
+
+    private async Task CargarAbonos()
+    {
+        if (clienteOverlay is null) return;
+        cargandoAbonos = true;
+        abonos = await ClienteService.GetAbonosByClienteAsync(clienteOverlay.Id);
+        cargandoAbonos = false;
+    }
+
+    // ── Fijar honorario ───────────────────────────────────────
+
+    private async Task FijarHonorario()
+    {
+        if (clienteOverlay is null) return;
+        if (nuevoHonorario < 0) { msgHonorario = "El monto no puede ser negativo."; errorHonorario = true; return; }
+
+        guardandoHonorario = true;
+        var ok = await ClienteService.UpdateHonorariosAsync(clienteOverlay.Id, nuevoHonorario);
+        guardandoHonorario = false;
+
+        if (ok)
+        {
+            msgHonorario = "Honorario actualizado correctamente.";
+            errorHonorario = false;
+            // Refresca el overlay y la lista
+            await Cargar();
+            clienteOverlay = clientes.FirstOrDefault(x => x.Id == clienteOverlay.Id) ?? clienteOverlay;
+            clienteOverlay = await ClienteService.GetByIdAsync(clienteOverlay.Id) ?? clienteOverlay;
+        }
+        else
+        {
+            msgHonorario = "Error al actualizar el honorario.";
+            errorHonorario = true;
+        }
+    }
+
+    // ── Registrar abono ───────────────────────────────────────
+
+    private async Task RegistrarAbono()
+    {
+        if (clienteOverlay is null) return;
+
+        if (abonoForm.Monto <= 0)
+        {
+            msgAbono = "El monto debe ser mayor a cero.";
+            errorAbono = true;
+            return;
+        }
+
+        // Convertir fecha local a UTC
+        abonoForm.ClienteId = clienteOverlay.Id;
+        abonoForm.FechaAbono = DateTime.SpecifyKind(fechaAbonoLocal, DateTimeKind.Utc);
+
+        guardandoAbono = true;
+        try
+        {
+            await ClienteService.AddAbonoAsync(abonoForm);
+            msgAbono = $"Abono de ${abonoForm.Monto:N2} registrado.";
+            errorAbono = false;
+
+            // Limpiar formulario
+            abonoForm = new AbonoCreateRequest { ClienteId = clienteOverlay.Id };
+            fechaAbonoLocal = DateTime.Today;
+
+            // Refrescar datos
+            await CargarAbonos();
+            clienteOverlay = await ClienteService.GetByIdAsync(clienteOverlay.Id) ?? clienteOverlay;
+            await Cargar();
+        }
+        catch (Exception ex)
+        {
+            msgAbono = $"Error: {ex.Message}";
+            errorAbono = true;
+        }
+        finally
+        {
+            guardandoAbono = false;
+        }
+    }
+
+    // ── Eliminar abono ────────────────────────────────────────
+
+    private async Task EliminarAbono(Guid abonoId)
+    {
+        if (clienteOverlay is null) return;
+
+        await ClienteService.DeleteAbonoAsync(abonoId);
+        await CargarAbonos();
+        clienteOverlay = await ClienteService.GetByIdAsync(clienteOverlay.Id) ?? clienteOverlay;
+        await Cargar();
+        msgAbono = "Abono eliminado.";
+        errorAbono = false;
+    }
+}

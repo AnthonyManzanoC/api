@@ -1,0 +1,319 @@
+﻿@page "/mi-portal"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Cliente")]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@inject LamillaEscudero.Application.Abstractions.IClienteService ClienteService
+@inject LamillaEscudero.Application.Abstractions.ICausaService CausaService
+@inject LamillaEscudero.Application.Abstractions.IEventoProcesalService EventoService
+@inject LamillaEscudero.Application.Abstractions.IPlazoService PlazoService
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<PageTitle>Mi Portal — Lamilla Escudero</PageTitle>
+
+@if (cargando)
+{
+    <div class="d-flex align-items-center justify-content-center" style="min-height:300px;">
+        <div class="spinner-border" style="color:var(--gold);"></div>
+        <span class="ms-3 text-muted">Cargando tu información...</span>
+    </div>
+}
+else if (cliente is null)
+{
+    <div class="container py-5 text-center">
+        <div style="font-size:3rem; margin-bottom:1rem;">⚠️</div>
+        <h2 style="font-family:var(--font-display); color:var(--navy);">Cuenta sin perfil vinculado</h2>
+        <p class="text-muted">
+            Tu cuenta de acceso no está asociada a un expediente de cliente.<br />
+            Por favor contacta al estudio para resolver esto.
+        </p>
+        <a href="/" class="btn-primary-gold d-inline-flex mt-3">Volver al inicio</a>
+    </div>
+}
+else
+{
+    @* ── Hero del portal ──────────────────────────────── *@
+    <div class="portal-hero">
+        <div class="container">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div>
+                    <h1 class="portal-welcome">Bienvenido/a, @cliente.Nombres.Split(' ')[0]</h1>
+                    <p class="portal-subtitle">
+                        Aquí puedes seguir el estado de tus causas en tiempo real.
+                    </p>
+                </div>
+
+                @* ✅ BOTÓN DE CERRAR SESIÓN DEL CLIENTE *@
+                <div class="d-flex align-items-center gap-3">
+                    <form method="post" action="/logout">
+                        <AntiforgeryToken />
+                        <button type="submit" class="btn btn-sm btn-outline-light" style="border-color: rgba(255,255,255,0.3);">
+                            <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            @* Tarjetas de contadores *@
+            <div class="d-flex gap-2 mt-4">
+                <div class="text-center px-3 py-2 rounded-3" style="background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1);">
+                    <div style="font-family:var(--font-display); font-size:1.5rem; color:var(--gold-light); font-weight:700;">
+                        @causas.Count
+                    </div>
+                    <div style="font-size:.72rem; color:rgba(255,255,255,.45);">causas</div>
+                </div>
+                <div class="text-center px-3 py-2 rounded-3" style="background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1);">
+                    <div style="font-family:var(--font-display); font-size:1.5rem; color:var(--gold-light); font-weight:700;">
+                        @totalEventos
+                    </div>
+                    <div style="font-size:.72rem; color:rgba(255,255,255,.45);">eventos</div>
+                </div>
+                <div class="text-center px-3 py-2 rounded-3" style="background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1);">
+                    <div style="font-family:var(--font-display); font-size:1.5rem; color:#fbbf24; font-weight:700;">
+                        @plazosProximos
+                    </div>
+                    <div style="font-size:.72rem; color:rgba(255,255,255,.45);">plazos prox.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Contenido principal ──────────────────────────── *@
+    <div class="container py-4">
+        <div class="row g-4">
+
+            @* ── Timeline principal ─────────────────── *@
+            <div class="col-lg-8">
+                <h2 style="font-family:var(--font-display); font-size:1.4rem; color:var(--navy); margin-bottom:1.5rem;">
+                    <i class="bi bi-clock-history text-gold me-2"></i>Historial de causas
+                </h2>
+
+                @if (!causas.Any())
+                {
+                    <div class="dash-empty">
+                        <i class="bi bi-briefcase" style="font-size:2rem; color:var(--silver);"></i>
+                        <span>No hay causas registradas aún.</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="timeline">
+                        @foreach (var causa in causas)
+                        {
+                            var ev = eventosPorCausa.GetValueOrDefault(causa.Id, new());
+                            var isOpen = causaExpandida == causa.Id || causas.Count == 1;
+
+                            <div class="timeline-causa">
+                                <div class="timeline-dot-causa"></div>
+
+                                @* Cabecera de la causa *@
+                                <div class="ms-3">
+                                    <div class="timeline-causa-header"
+                                         @onclick="() => ToggleCausa(causa.Id)">
+                                        <div style="flex:1;">
+                                            <h3 class="timeline-causa-title">
+                                                @causa.IdentificadorVisual
+                                            </h3>
+                                            <div class="timeline-causa-meta">
+                                                @(causa.Materia ?? "—") ·
+                                                <span class="dash-badge @GetEstadoBadge(causa.Estado)">
+                                                    @(causa.Estado ?? "Sin estado")
+                                                </span>
+                                                @if (causa.FechaIngreso.HasValue)
+                                                {
+                                                    <span class="ms-2">Ingreso: @causa.FechaIngreso.Value.ToString("dd/MM/yyyy")</span>
+                                                }
+                                            </div>
+                                        </div>
+                                        <i class="bi @(isOpen ? "bi-chevron-up" : "bi-chevron-down")"
+                                           style="color:var(--silver);"></i>
+                                    </div>
+
+                                    @* Eventos / timeline interno *@
+                                    @if (isOpen)
+                                    {
+                                        <div class="timeline-eventos">
+                                            @if (!ev.Any())
+                                            {
+                                                <p class="text-muted small py-2">
+                                                    <i class="bi bi-clock me-1"></i>Sin eventos registrados aún.
+                                                </p>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var e in ev)
+                                                {
+                                                    <div class="timeline-evento">
+                                                        <div class="tl-tipo">
+                                                            @if (e.RequiereAsistencia)
+                                                            {
+                                                                <i class="bi bi-calendar-check me-1"></i>
+                                                            }
+                                                            @e.Tipo
+                                                        </div>
+                                                        <div class="tl-desc">@e.Descripcion</div>
+                                                        @if (e.FechaEvento.HasValue)
+                                                        {
+                                                            <div class="tl-fecha">
+                                                                <i class="bi bi-calendar3 me-1"></i>
+                                                                @e.FechaEvento.Value.ToString("dd MMMM yyyy",
+                                                                new System.Globalization.CultureInfo("es-EC"))
+                                </div>
+                                                                }
+                                                        @if (e.RequiereAsistencia && e.FechaHoraAgendada.HasValue)
+                                                        {
+                                                            <div class="tl-badge-audiencia mt-2">
+                                                                <i class="bi bi-clock me-1"></i>
+                                                                Audiencia: @e.FechaHoraAgendada.Value.ToString("dd/MM/yyyy 'a las' HH:mm")
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @* ── Panel lateral: plazos próximos ──────── *@
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <strong style="font-family:var(--font-display); color:var(--navy);">
+                            <i class="bi bi-calendar-check text-gold me-2"></i>Próximos plazos
+                        </strong>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (!plazos.Any())
+                        {
+                            <div class="dash-empty">
+                                <i class="bi bi-check-circle text-muted"></i>
+                                <span>Sin plazos próximos</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <ul style="list-style:none; margin:0; padding:0;">
+                                @foreach (var p in plazos.Take(8))
+                                {
+                                    var dias = (p.FechaVencimiento.Date - DateTime.Today).Days;
+                                    <li style="padding:.875rem 1.25rem; border-bottom:1px solid rgba(0,0,0,.05);">
+                                        <div class="fw-medium small" style="color:var(--navy);">@p.Titulo</div>
+                                        <div class="small text-muted">@p.NumeroProceso</div>
+                                        <div class="d-flex align-items-center justify-content-between mt-1">
+                                            <span class="small text-muted">@p.FechaVencimiento.ToString("dd/MM/yyyy")</span>
+                                            @if (dias < 0)
+                                            {
+                                                <span class="dash-badge dash-badge-danger">Vencido</span>
+                                            }
+                                            else if (dias == 0)
+                                            {
+                                                <span class="dash-badge dash-badge-danger">Hoy</span>
+                                            }
+                                            else if (dias <= 3)
+                                            {
+                                                <span class="dash-badge dash-badge-warning">@dias días</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="dash-badge dash-badge-ok">@dias días</span>
+                                            }
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+
+                @* Contacto rápido *@
+                <div class="card mt-3">
+                    <div class="card-body text-center">
+                        <i class="bi bi-headset" style="font-size:1.5rem; color:var(--gold);"></i>
+                        <p class="mt-2 small text-muted">¿Tienes dudas sobre tu causa?</p>
+                        <a href="/contacto" class="btn btn-dark btn-sm w-100">
+                            <i class="bi bi-chat-text me-1"></i>Contactar al estudio
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+}
+
+@code {
+    private LamillaEscudero.Application.Models.Clientes.ClienteResponse? cliente;
+    private List<LamillaEscudero.Application.Models.Causas.CausaResponse> causas = new();
+    private Dictionary<Guid, List<LamillaEscudero.Application.Models.Eventos.EventoProcesalResponse>> eventosPorCausa = new();
+    private List<LamillaEscudero.Application.Models.Plazos.PlazoResponse> plazos = new();
+    private bool cargando = true;
+    private Guid? causaExpandida;
+    private int totalEventos;
+    private int plazosProximos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var user = auth.User;
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            cargando = false;
+            return;
+        }
+
+        // Buscar el cliente vinculado a este userId
+        var todosClientes = await ClienteService.GetAllAsync();
+        // Nota: en producción agrega GetByUserIdAsync al servicio para eficiencia
+        cliente = todosClientes.FirstOrDefault(c =>
+            c.UserId == userId ||
+            c.Email?.Equals(user.FindFirst(ClaimTypes.Email)?.Value,
+                StringComparison.OrdinalIgnoreCase) == true);
+
+        if (cliente is not null)
+        {
+            causas = await CausaService.GetByClienteIdAsync(cliente.Id);
+
+            foreach (var causa in causas)
+            {
+                var ev = await EventoService.GetByCausaIdAsync(causa.Id);
+                eventosPorCausa[causa.Id] = ev.OrderByDescending(x => x.FechaEvento ?? x.CreatedAt).ToList();
+            }
+
+            totalEventos = eventosPorCausa.Values.Sum(x => x.Count);
+
+            // Plazos próximos de todas las causas del cliente
+            var todosPlazos = await PlazoService.GetAllAsync();
+            var causaIds = causas.Select(c => c.Id).ToHashSet();
+            plazos = todosPlazos
+                .Where(p => causaIds.Contains(p.CausaId) && !p.Cumplido)
+                .OrderBy(p => p.FechaVencimiento)
+                .ToList();
+            plazosProximos = plazos.Count(p => (p.FechaVencimiento.Date - DateTime.Today).Days <= 7);
+
+            // Expandir primera causa por defecto
+            if (causas.Count == 1) causaExpandida = causas[0].Id;
+        }
+
+        cargando = false;
+    }
+
+    private void ToggleCausa(Guid id)
+        => causaExpandida = causaExpandida == id ? null : id;
+
+    private static string GetEstadoBadge(string? estado) => estado switch
+    {
+        "Activa" => "dash-badge-ok",
+        "En juicio" => "dash-badge-warning",
+        "Instrucción fiscal" => "dash-badge-warning",
+        "Archivada" => "",
+        "Concluida" => "",
+        _ => "dash-badge-ok"
+    };
+}

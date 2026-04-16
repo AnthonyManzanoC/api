@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="css/phase6-additions.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="LamillaEscudero.Web.styles.css" />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes />
+    <script src="_framework/blazor.web.js"></script>
+
+   
+    <script>
+        window.copyAndOpenSatje = function (numeroProceso) {
+            // 1. Copiar al portapapeles
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(numeroProceso).catch(function () {
+                    // Fallback para navegadores sin soporte
+                    legacyCopy(numeroProceso);
+                });
+            } else {
+                legacyCopy(numeroProceso);
+            }
+
+            // 2. Abrir e-SATJE en nueva pestaña
+            window.open(
+                'https://procesosjudiciales.funcionjudicial.gob.ec/busqueda-filtros',
+                '_blank',
+                'noopener,noreferrer'
+            );
+        };
+
+        function legacyCopy(text) {
+            var el = document.createElement('textarea');
+            el.value = text;
+            el.style.position = 'fixed';
+            el.style.opacity = '0';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        }
+    </script>
+</body>
+
+</html>

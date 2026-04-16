@@ -1,0 +1,48 @@
+﻿@inherits LayoutComponentBase
+
+<div class="public-shell">
+    <header class="public-header">
+        <div class="container-fluid px-4">
+            <nav class="public-nav">
+                <a href="/" class="public-brand">
+                    <span class="public-brand-mono">LE</span>
+                    <div class="public-brand-text">
+                        <span class="public-brand-name">Lamilla Escudero</span>
+                        <span class="public-brand-sub">&amp; Asociados</span>
+                    </div>
+                </a>
+
+                <ul class="public-nav-links">
+                    <li><NavLink class="public-nav-link" href="/" Match="NavLinkMatch.All">Inicio</NavLink></li>
+                    <li><NavLink class="public-nav-link" href="/servicios">Servicios</NavLink></li>
+                    <li><NavLink class="public-nav-link" href="/contacto">Contacto</NavLink></li>
+                    <li>
+                        <a href="/login" class="public-nav-cta">
+                            <i class="bi bi-person-lock me-1"></i>Acceso Interno
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="public-main">
+        @Body
+    </main>
+
+    <footer class="public-footer">
+        <div class="container">
+            <div class="footer-inner">
+                <div class="footer-brand">
+                    <span class="footer-mono">LE</span>
+                    <div>
+                        <p class="footer-name">Lamilla Escudero &amp; Asociados</p>
+                        <p class="footer-tagline">Solidez jurídica, trato humano.</p>
+                    </div>
+                </div>
+                <p class="footer-copy">&copy; @DateTime.Now.Year Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </footer>
+    <LamillaEscudero.Web.Components.Pages.ChatbotPublico />
+</div>

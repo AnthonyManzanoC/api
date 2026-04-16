@@ -1,0 +1,6 @@
+@LamillaEscudero.Api_HostAddress = http://localhost:5151
+
+GET {{LamillaEscudero.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

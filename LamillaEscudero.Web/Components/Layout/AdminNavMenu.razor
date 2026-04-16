@@ -1,0 +1,162 @@
+﻿@* AdminNavMenu.razor — Sidebar con todos los módulos Phase 6
+   Coloca como <AdminNavMenu /> dentro del AdminLayout *@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<nav class="admin-sidebar" id="adminSidebar">
+
+    @* ── Header / Logo ──────────────────────────────── *@
+    <div class="sidebar-header">
+        <div class="sidebar-logo">
+            <span class="sidebar-monogram">LE</span>
+        </div>
+        <div class="sidebar-brand">
+            <span class="sidebar-brand-name">Lamilla Escudero</span>
+            <span class="sidebar-brand-sub">Panel de gestión</span>
+        </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    @* ── Principal ──────────────────────────────────── *@
+    <span class="sidebar-section-label">Principal</span>
+    <ul class="sidebar-nav">
+        <li>
+            <NavLink href="/admin" class="sidebar-link" Match="NavLinkMatch.All">
+                <i class="bi bi-speedometer2"></i>Dashboard
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/clientes" class="sidebar-link">
+                <i class="bi bi-people"></i>Clientes
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/causas" class="sidebar-link">
+                <i class="bi bi-briefcase"></i>Causas
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/eventos" class="sidebar-link">
+                <i class="bi bi-calendar-event"></i>Eventos Procesales
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/plazos" class="sidebar-link">
+                <i class="bi bi-clock-history"></i>Plazos
+            </NavLink>
+        </li>
+    </ul>
+
+    <div class="sidebar-divider"></div>
+
+    @* ── Comunicaciones ─────────────────────────────── *@
+    <span class="sidebar-section-label">Comunicaciones</span>
+    <ul class="sidebar-nav">
+        <li>
+            <NavLink href="/admin/notificaciones" class="sidebar-link">
+                <i class="bi bi-bell"></i>Notificaciones
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/consultas" class="sidebar-link">
+                <i class="bi bi-envelope"></i>Consultas Web
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/documentos" class="sidebar-link">
+                <i class="bi bi-folder2-open"></i>Documentos
+            </NavLink>
+        </li>
+    </ul>
+
+    <div class="sidebar-divider"></div>
+
+    @* ── CMS (Web pública) ──────────────────────────── *@
+    <span class="sidebar-section-label">CMS — Web Pública</span>
+    <ul class="sidebar-nav">
+        <li>
+            <NavLink href="/admin/cms/miembros" class="sidebar-link">
+                <i class="bi bi-person-badge"></i>Equipo del Estudio
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/cms/servicios" class="sidebar-link">
+                <i class="bi bi-grid"></i>Servicios Ofrecidos
+            </NavLink>
+        </li>
+        <li>
+            <NavLink href="/admin/configuracion" class="sidebar-link">
+                <i class="bi bi-gear"></i>Configuración
+            </NavLink>
+        </li>
+    </ul>
+
+    @* ── Administración (solo Admin) ─────────────────── *@
+    <AuthorizeView Roles="Administrador">
+        <Authorized>
+            <div class="sidebar-divider"></div>
+            <span class="sidebar-section-label">Administración</span>
+            <ul class="sidebar-nav">
+                <li>
+                    <NavLink href="/admin/cuentas" class="sidebar-link">
+                        <i class="bi bi-person-gear"></i>Centro de Cuentas
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="/hangfire" class="sidebar-link" target="_blank">
+                        <i class="bi bi-robot"></i>Hangfire Jobs
+                        <i class="bi bi-box-arrow-up-right ms-auto" style="font-size:.65rem; opacity:.4;"></i>
+                    </NavLink>
+                </li>
+            </ul>
+        </Authorized>
+    </AuthorizeView>
+
+    @* ── Footer / Usuario ────────────────────────────── *@
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <div class="sidebar-user-avatar">
+                @GetInitials()
+            </div>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name">@userName</span>
+                <span class="sidebar-user-role">@userRole</span>
+            </div>
+        </div>
+        <form method="post" action="/logout">
+            <AntiforgeryToken />
+            <button type="submit" class="sidebar-logout" title="Cerrar sesión">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+</nav>
+
+@code {
+    private string userName = "Usuario";
+    private string userRole = "—";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var user = auth.User;
+        userName = user.FindFirst("fullName")?.Value
+                 ?? user.Identity?.Name
+                 ?? "Usuario";
+        userRole = user.IsInRole("Administrador") ? "Administrador"
+                  : user.IsInRole("Abogado") ? "Abogado"
+                  : user.IsInRole("Asistente") ? "Asistente"
+                  : "Usuario";
+    }
+
+    private string GetInitials()
+    {
+        var parts = userName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 ? $"{parts[0][0]}{parts[1][0]}"
+             : parts.Length > 0 ? $"{parts[0][0]}"
+             : "U";
+    }
+}

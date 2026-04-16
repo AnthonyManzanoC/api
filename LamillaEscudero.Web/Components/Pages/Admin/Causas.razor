@@ -1,0 +1,475 @@
+﻿@page "/admin/causas"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.IClienteService ClienteService
+@inject LamillaEscudero.Application.Abstractions.ICausaService CausaService
+@inject IJSRuntime JS
+
+<PageTitle>Causas — Lamilla Escudero</PageTitle>
+
+@* ══════════════════════════════════════════════════════════
+   TOAST SATJE — Notificación elegante al copiar
+   ══════════════════════════════════════════════════════════ *@
+@if (showSatjeToast)
+{
+    <div style="
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 9999;
+            background: var(--navy);
+            color: #fff;
+            padding: .875rem 1.25rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(11,31,58,.25);
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            font-size: .875rem;
+            font-family: var(--font-body);
+            min-width: 280px;
+            border-left: 3px solid var(--gold);
+            animation: satje-slide-in 200ms ease;">
+        <span style="font-size:1.2rem;">📋</span>
+        <div>
+            <div style="font-weight:600; color: var(--gold-light);">Número copiado</div>
+            <div style="opacity:.75; font-size:.8rem;">Pégalo en el e-SATJE para buscar.</div>
+        </div>
+        <button @onclick="() => showSatjeToast = false"
+                style="margin-left:auto; background:none; border:none; color:rgba(255,255,255,.4);
+                           cursor:pointer; font-size:1rem; padding:.125rem .25rem; line-height:1;"
+                title="Cerrar">
+            ×
+        </button>
+    </div>
+}
+
+<style>
+    @@keyframes satje-slide-in {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .btn-satje {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1.5px solid rgba(184,150,62,.35);
+        background: rgba(184,150,62,.06);
+        color: var(--gold);
+        font-size: .8rem;
+        cursor: pointer;
+        transition: all 150ms ease;
+        padding: 0;
+        vertical-align: middle;
+        margin-left: .375rem;
+        flex-shrink: 0;
+    }
+
+        .btn-satje:hover {
+            background: var(--gold);
+            color: #fff;
+            border-color: var(--gold);
+            box-shadow: 0 2px 8px rgba(184,150,62,.35);
+        }
+
+        .btn-satje:active {
+            transform: scale(.93);
+        }
+</style>
+
+<div class="row g-4">
+
+    @* ══════════════════════════════════════════════════════════
+       FORMULARIO
+       ══════════════════════════════════════════════════════════ *@
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <strong>@(editingId is null ? "Nueva causa" : "Editar causa")</strong>
+            </div>
+            <div class="card-body">
+
+                @if (!string.IsNullOrWhiteSpace(formError))
+                {
+                    <div class="alert alert-danger small py-2 mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>@formError
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(formSuccess))
+                {
+                    <div class="alert alert-info small py-2 mb-3">
+                        <i class="bi bi-check-circle me-1"></i>@formSuccess
+                    </div>
+                }
+
+                <EditForm Model="form" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+
+                    @* Cliente *@
+                    <div class="mb-3">
+                        <label class="form-label">Cliente</label>
+                        <InputSelect class="form-select" @bind-Value="form.ClienteId">
+                            <option value="00000000-0000-0000-0000-000000000000">— Seleccione —</option>
+                            @foreach (var c in clientes)
+                            {
+                                <option value="@c.Id">@c.Nombres</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    @* Materia *@
+                    <div class="mb-3">
+                        <label class="form-label">Materia</label>
+                        <InputSelect class="form-select" @bind-Value="form.Materia" @oninput="OnMateriaChanged">
+                            <option value="">— Seleccione —</option>
+                            <option value="Civil">Civil</option>
+                            <option value="Familia">Familia</option>
+                            <option value="Laboral">Laboral</option>
+                            <option value="Penal">Penal</option>
+                            <option value="Mercantil">Mercantil</option>
+                            <option value="Inquilinato">Inquilinato</option>
+                            <option value="Tránsito">Tránsito</option>
+                            <option value="Otra">Otra</option>
+                        </InputSelect>
+                    </div>
+
+                    @* Número de proceso *@
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Número de proceso
+                            @if (esPenal)
+                            {
+                                <span class="text-muted small ms-1">(opcional si está en investigación)</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger">*</span>
+                            }
+                        </label>
+                        <InputText class="form-control"
+                                   @bind-Value="form.NumeroProceso"
+                                   placeholder="@(esPenal ? "Ej: 17250-2024-00123 (puede dejarse en blanco)" : "Ej: 17250-2024-00123")" />
+                    </div>
+
+                    @* Expediente Fiscal (solo penal) *@
+                    @if (esPenal)
+                    {
+                        <div class="mb-3 p-3 rounded"
+                             style="background: rgba(184,150,62,.06); border: 1px dashed rgba(184,150,62,.3);">
+                            <label class="form-label" style="color: var(--gold);">
+                                <i class="bi bi-building me-1"></i>Expediente Fiscal
+                                <span class="text-muted small ms-1">(N° de investigación en Fiscalía)</span>
+                            </label>
+                            <InputText class="form-control"
+                                       @bind-Value="form.ExpedienteFiscal"
+                                       placeholder="Ej: 065-2024-FGE-IMB" />
+                            <div class="form-text" style="color: var(--gold); opacity:.7;">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Si la causa aún no tiene juez asignado, complete solo este campo.
+                            </div>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Unidad judicial</label>
+                        <InputText class="form-control" @bind-Value="form.UnidadJudicial"
+                                   placeholder="Ej: Unidad Judicial Civil Ibarra" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <InputSelect class="form-select" @bind-Value="form.Estado">
+                            <option value="">— Seleccione —</option>
+                            <option value="Activa">Activa</option>
+                            <option value="En investigación">En investigación</option>
+                            <option value="Instrucción fiscal">Instrucción fiscal</option>
+                            <option value="En juicio">En juicio</option>
+                            <option value="Sentencia">Sentencia</option>
+                            <option value="Apelación">Apelación</option>
+                            <option value="Archivada">Archivada</option>
+                            <option value="Concluida">Concluida</option>
+                        </InputSelect>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha ingreso</label>
+                        <InputDate class="form-control" @bind-Value="form.FechaIngreso" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Resumen / Notas</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="form.Resumen"
+                                       placeholder="Descripción breve de la causa..." />
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-dark" type="submit" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            <i class="bi bi-floppy me-1"></i>Guardar
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" @onclick="Limpiar">
+                            <i class="bi bi-x-lg me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════
+       LISTADO con Identificador Camaleón + Botón e-SATJE
+       ══════════════════════════════════════════════════════════ *@
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <strong>Listado de causas (@causas.Count)</strong>
+                <div class="d-flex align-items-center gap-2">
+                    @* Leyenda discreta del botón SATJE *@
+                    <span style="font-size:.72rem; color: var(--silver); display:flex; align-items:center; gap:.3rem;">
+                        <i class="bi bi-box-arrow-up-right" style="color: var(--gold);"></i>
+                        = Buscar en e-SATJE
+                    </span>
+                    <input class="form-control form-control-sm"
+                           style="width:180px"
+                           placeholder="Buscar..."
+                           @bind="filtro"
+                           @bind:event="oninput" />
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Identificador</th>
+                                <th>Cliente</th>
+                                <th>Materia / Estado</th>
+                                <th class="text-end pe-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in CausasFiltradas)
+                            {
+                                <tr>
+                                    <td class="ps-3">
+                                        @* ── IDENTIFICADOR CAMALEÓN + BOTÓN e-SATJE ── *@
+                                        <div style="display:flex; align-items:center; gap:.25rem;">
+                                            <span class="fw-medium"
+                                                  style="color: var(--navy); font-size:.875rem;">
+                                                @c.IdentificadorVisual
+                                            </span>
+
+                                            @* Botón SATJE — solo aparece si tiene NumeroProceso *@
+                                            @if (!string.IsNullOrWhiteSpace(c.NumeroProceso))
+                                            {
+                                                <button class="btn-satje"
+                                                        @onclick="() => AbrirSatje(c.NumeroProceso!)"
+                                                        title="Copiar número y abrir e-SATJE">
+                                                    <i class="bi bi-box-arrow-up-right"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                        <div class="mt-1">
+                                            <span class="dash-badge @GetBadgeClass(c)">
+                                                @c.EtiquetaAmbito
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="small">@c.ClienteNombre</span>
+                                    </td>
+                                    <td>
+                                        <div class="small">@(c.Materia ?? "—")</div>
+                                        <div class="small text-muted">@(c.Estado ?? "—")</div>
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => Editar(c)"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => Eliminar(c.Id)"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!CausasFiltradas.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted small">
+                                        <i class="bi bi-search me-1"></i>No se encontraron causas.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<LamillaEscudero.Application.Models.Clientes.ClienteResponse> clientes = new();
+    private List<LamillaEscudero.Application.Models.Causas.CausaResponse> causas = new();
+    private LamillaEscudero.Application.Models.Causas.CausaCreateRequest form = new();
+    private Guid? editingId;
+    private string? formError;
+    private string? formSuccess;
+    private bool isSaving;
+    private bool esPenal;
+    private string filtro = string.Empty;
+
+    // ── Estado del Toast SATJE ─────────────────────────────────────
+    private bool showSatjeToast;
+    private System.Threading.CancellationTokenSource? toastCts;
+
+    private IEnumerable<LamillaEscudero.Application.Models.Causas.CausaResponse> CausasFiltradas => string.IsNullOrWhiteSpace(filtro)
+        ? causas
+        : causas.Where(c =>
+            (c.IdentificadorVisual?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true) ||
+            (c.ClienteNombre?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true) ||
+            (c.Materia?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true) ||
+            (c.Estado?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true));
+
+    protected override async Task OnInitializedAsync()
+    {
+        clientes = await ClienteService.GetAllAsync();
+        causas = await CausaService.GetAllAsync();
+    }
+
+    // ── Lógica del Atajo SATJE ────────────────────────────────────
+    private async Task AbrirSatje(string numeroProceso)
+    {
+        // 1. Invocar JS: copia al portapapeles + abre nueva pestaña
+        await JS.InvokeVoidAsync("copyAndOpenSatje", numeroProceso);
+
+        // 2. Mostrar toast
+        showSatjeToast = true;
+        StateHasChanged();
+
+        // 3. Auto-ocultar después de 4 segundos
+        toastCts?.Cancel();
+        toastCts = new System.Threading.CancellationTokenSource();
+        var token = toastCts.Token;
+
+        _ = Task.Delay(4000, token).ContinueWith(_ =>
+        {
+            if (!token.IsCancellationRequested)
+            {
+                showSatjeToast = false;
+                InvokeAsync(StateHasChanged);
+            }
+        });
+    }
+
+    private void OnMateriaChanged(ChangeEventArgs e)
+    {
+        var valor = e.Value?.ToString() ?? string.Empty;
+        form.Materia = valor;
+        esPenal = valor.Contains("penal", StringComparison.OrdinalIgnoreCase);
+        if (!esPenal) form.ExpedienteFiscal = null;
+    }
+
+    private async Task Guardar()
+    {
+        formError = null;
+        formSuccess = null;
+        isSaving = true;
+
+        try
+        {
+            if (editingId is null)
+            {
+                await CausaService.CreateAsync(form);
+                formSuccess = "Causa registrada correctamente.";
+            }
+            else
+            {
+                var update = new LamillaEscudero.Application.Models.Causas.CausaUpdateRequest
+                {
+                    ClienteId = form.ClienteId,
+                    NumeroProceso = form.NumeroProceso,
+                    ExpedienteFiscal = form.ExpedienteFiscal,
+                    UnidadJudicial = form.UnidadJudicial,
+                    Materia = form.Materia,
+                    Estado = form.Estado,
+                    FechaIngreso = form.FechaIngreso,
+                    Resumen = form.Resumen,
+                    IsActive = true
+                };
+                await CausaService.UpdateAsync(editingId.Value, update);
+                formSuccess = "Causa actualizada correctamente.";
+            }
+            causas = await CausaService.GetAllAsync();
+            Limpiar();
+        }
+        catch (InvalidOperationException ex)
+        {
+            formError = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Editar(LamillaEscudero.Application.Models.Causas.CausaResponse c)
+    {
+        editingId = c.Id;
+        form = new LamillaEscudero.Application.Models.Causas.CausaCreateRequest
+        {
+            ClienteId = c.ClienteId,
+            NumeroProceso = c.NumeroProceso,
+            ExpedienteFiscal = c.ExpedienteFiscal,
+            UnidadJudicial = c.UnidadJudicial,
+            Materia = c.Materia,
+            Estado = c.Estado,
+            FechaIngreso = c.FechaIngreso,
+            Resumen = c.Resumen
+        };
+        esPenal = c.Materia?.Contains("penal", StringComparison.OrdinalIgnoreCase) == true;
+        formError = null;
+        formSuccess = null;
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await CausaService.DeleteAsync(id);
+        causas = await CausaService.GetAllAsync();
+    }
+
+    private void Limpiar()
+    {
+        editingId = null;
+        form = new LamillaEscudero.Application.Models.Causas.CausaCreateRequest();
+        esPenal = false;
+        formError = null;
+    }
+
+    private static string GetBadgeClass(LamillaEscudero.Application.Models.Causas.CausaResponse c) => c.EtiquetaAmbito switch
+    {
+        "Civil" => "dash-badge dash-badge-ok",
+        "Penal — Instrucción" => "dash-badge dash-badge-warning",
+        "Penal — Investigación" => "dash-badge dash-badge-danger",
+        _ => "dash-badge"
+    };
+}

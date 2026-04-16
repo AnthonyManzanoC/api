@@ -1,0 +1,733 @@
+﻿@page "/admin/configuracion"
+@attribute [Authorize(Roles = "Administrador,Abogado")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.IConfiguracionEstudioService ConfigService
+@inject LamillaEscudero.Application.Abstractions.IEmailService EmailService
+
+<PageTitle>Configuración — Lamilla Escudero</PageTitle>
+
+<div class="cfg-shell">
+    <div class="cfg-header">
+        <div>
+            <h1 class="cfg-title">
+                <i class="bi bi-gear-fill me-2 text-gold"></i>Configuración del Estudio
+            </h1>
+            <p class="cfg-subtitle">
+                Personaliza la identidad, comunicación y ubicación del estudio.
+            </p>
+        </div>
+    </div>
+
+    @if (config is null)
+    {
+        <div class="cfg-loading">
+            <div class="spinner-border text-secondary" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <div class="cfg-tabs">
+            <button class="cfg-tab @(activeTab == "estudio" ? "cfg-tab-active" : "")"
+                    @onclick='() => activeTab = "estudio"'>
+                <i class="bi bi-building me-2"></i>Estudio
+            </button>
+            <button class="cfg-tab @(activeTab == "smtp" ? "cfg-tab-active" : "")"
+                    @onclick='() => activeTab = "smtp"'>
+                <i class="bi bi-envelope-fill me-2"></i>Servidor SMTP
+            </button>
+            <button class="cfg-tab @(activeTab == "mapa" ? "cfg-tab-active" : "")"
+                    @onclick='() => activeTab = "mapa"'>
+                <i class="bi bi-geo-alt-fill me-2"></i>Ubicación / Mapa
+            </button>
+        </div>
+
+        <div class="cfg-panel">
+            <EditForm Model="form" OnValidSubmit="Guardar">
+                <DataAnnotationsValidator />
+
+                @if (activeTab == "estudio")
+                {
+                    <div class="cfg-section-title">Logotipo del Estudio</div>
+
+                    <div class="cfg-photo-area">
+                        <div class="cfg-photo-preview">
+                            @if (!string.IsNullOrWhiteSpace(form.PhotoUrl))
+                            {
+                                <img src="@form.PhotoUrl" alt="Logo del estudio"
+                                     class="cfg-photo-img" />
+                                <button type="button" class="cfg-photo-remove"
+                                        @onclick="QuitarFoto" title="Quitar imagen">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <div class="cfg-photo-placeholder">
+                                    <i class="bi bi-image"></i>
+                                    <span>Sin logotipo</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="cfg-photo-controls">
+                            <div class="cfg-photo-upload-zone"
+                                 @ondragover:preventDefault="true"
+                                 @ondrop:preventDefault="true">
+                                <i class="bi bi-cloud-upload cfg-photo-upload-icon"></i>
+                                <p class="cfg-photo-upload-text">
+                                    Arrastra tu imagen aquí o
+                                </p>
+                                <label class="btn btn-outline-secondary btn-sm cfg-photo-btn">
+                                    <i class="bi bi-folder2-open me-1"></i>Seleccionar archivo
+                                    <InputFile OnChange="CargarImagen"
+                                               accept="image/jpeg,image/png,image/webp"
+                                               class="d-none" />
+                                </label>
+                                <p class="cfg-photo-hint">
+                                    JPG, PNG o WebP · máximo 2 MB
+                                </p>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(fotoError))
+                            {
+                                <div class="alert alert-danger py-2 mt-2 small">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>@fotoError
+                                </div>
+                            }
+                            @if (cargandoFoto)
+                            {
+                                <div class="text-center mt-2 text-muted small">
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                    Procesando imagen...
+                                </div>
+                            }
+
+                            <div class="mt-3">
+                                <label class="form-label">
+                                    O pega una URL de imagen externa
+                                    <span class="text-muted">(opcional)</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="bi bi-link-45deg"></i>
+                                    </span>
+                                    <InputText class="form-control"
+                                               @bind-Value="form.PhotoUrl"
+                                               placeholder="https://..." />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cfg-section-title mt-4">Datos del Estudio</div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del estudio</label>
+                            <InputText class="form-control" @bind-Value="form.NombreEstudio"
+                                       placeholder="Ej. Lamilla Escudero & Asociados" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Slogan</label>
+                            <InputText class="form-control" @bind-Value="form.Slogan"
+                                       placeholder="Ej. Solidez jurídica, trato humano." />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email de contacto</label>
+                            <InputText class="form-control" @bind-Value="form.EmailContacto"
+                                       placeholder="contacto@estudio.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <InputText class="form-control" @bind-Value="form.TelefonoContacto"
+                                       placeholder="+593 99 000 0000" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Dirección física</label>
+                            <InputText class="form-control" @bind-Value="form.Direccion"
+                                       placeholder="Av. Principal 123, Guayaquil" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">URL del logo alternativo</label>
+                            <InputText class="form-control" @bind-Value="form.LogoUrl"
+                                       placeholder="https://..." />
+                        </div>
+                    </div>
+
+                    <div class="cfg-section-title mt-4">Paleta de Colores</div>
+                    <div class="row g-3">
+                        @foreach (var item in new[]
+                                        {
+                                ("Color primario (Navy)",   form.ColorPrimario,
+                                (Action<string?>)(v => form.ColorPrimario = v)),
+                                ("Color secundario (Gold)", form.ColorSecundario,
+                                (Action<string?>)(v => form.ColorSecundario = v)),
+                                ("Color fondo",             form.ColorFondo,
+                                (Action<string?>)(v => form.ColorFondo = v))
+                                })
+                        {
+                            <div class="col-md-4">
+                                <label class="form-label">@item.Item1</label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <input type="color"
+                                           class="form-control form-control-color flex-shrink-0"
+                                           value="@(item.Item2 ?? "#000000")"
+                                           @oninput="e => item.Item3(e.Value?.ToString())"
+                                           title="Elige un color" />
+                                    <input type="text" class="form-control"
+                                           value="@item.Item2"
+                                           @oninput="e => item.Item3(e.Value?.ToString())"
+                                           placeholder="#RRGGBB" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (activeTab == "smtp")
+                {
+                    <div class="cfg-section-title">Credenciales del servidor SMTP</div>
+                    <div class="alert cfg-smtp-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Estas credenciales se almacenan en la base de datos y se usan para
+                        enviar correos automáticos a los clientes. Nunca se guardan en
+                        archivos de configuración.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Servidor SMTP</label>
+                            <InputText class="form-control" @bind-Value="form.SmtpServer"
+                                       placeholder="smtp.gmail.com / smtp.office365.com" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Puerto</label>
+                            <InputNumber class="form-control" @bind-Value="form.SmtpPort"
+                                         placeholder="587" />
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <InputCheckbox class="form-check-input"
+                                               @bind-Value="form.SmtpEnableSsl" id="sslChk" />
+                                <label class="form-check-label" for="sslChk">
+                                    Habilitar SSL/TLS
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Usuario (correo remitente)</label>
+                            <InputText class="form-control" @bind-Value="form.SmtpUser"
+                                       placeholder="noreply@estudio.com" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Contraseña / App Password</label>
+                            <div class="input-group">
+                                <InputText class="form-control"
+                                           @bind-Value="form.SmtpPass"
+                                           type="@(mostrarPass ? "text" : "password")"
+                                           placeholder="••••••••••" />
+                                <button class="btn btn-outline-secondary" type="button"
+                                        @onclick="() => mostrarPass = !mostrarPass">
+                                    <i class="bi @(mostrarPass ? "bi-eye-slash" : "bi-eye")"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre visible del remitente</label>
+                            <InputText class="form-control" @bind-Value="form.SmtpFromName"
+                                       placeholder="Lamilla Escudero & Asociados" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(form.SmtpServer))
+                    {
+                        <div class="mt-4">
+                            <div class="cfg-section-title">Probar conexión</div>
+                            <div class="d-flex gap-2 align-items-end">
+                                <div style="flex:1">
+                                    <label class="form-label">Correo de prueba</label>
+                                    <input class="form-control" type="email"
+                                           @bind="emailPrueba"
+                                           placeholder="tu@correo.com" />
+                                </div>
+                                <button class="btn btn-outline-secondary" type="button"
+                                        @onclick="EnviarPrueba"
+                                        disabled="@enviandoPrueba">
+                                    @if (enviandoPrueba)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-send me-1"></i>
+                                    }
+                                    Enviar prueba
+                                </button>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(mensajePrueba))
+                            {
+                                <div class="alert @(pruebOk ? "alert-success" : "alert-danger") mt-2 py-2">
+                                    @mensajePrueba
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+
+                @if (activeTab == "mapa")
+                {
+                    <div class="cfg-section-title">Coordenadas de la oficina</div>
+                    <div class="alert cfg-smtp-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Las coordenadas se usan para mostrar la ubicación del estudio en la
+                        página pública mediante un mapa OpenStreetMap interactivo.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Latitud</label>
+                            <InputNumber class="form-control" @bind-Value="form.MapLatitude"
+                                         placeholder="-2.1894" />
+                            <div class="form-text">Ejemplo: -2.1894 (Guayaquil)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Longitud</label>
+                            <InputNumber class="form-control" @bind-Value="form.MapLongitude"
+                                         placeholder="-79.8891" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">
+                                URL de embed personalizada
+                                <span class="text-muted">(opcional — sobreescribe lat/lng)</span>
+                            </label>
+                            <InputText class="form-control" @bind-Value="form.MapEmbedUrl"
+                                       placeholder="https://www.google.com/maps/embed?pb=..." />
+                        </div>
+                    </div>
+
+                    @if (form.MapLatitude.HasValue && form.MapLongitude.HasValue)
+                    {
+                        <div class="mt-4">
+                            <div class="cfg-section-title">Vista previa</div>
+                            <div style="border-radius:12px; overflow:hidden; box-shadow:var(--shadow-md);">
+                                <iframe src="@ObtenerUrlMapa()"
+                                        width="100%" height="280"
+                                        style="border:0; display:block;"
+                                        allowfullscreen loading="lazy"
+                                        referrerpolicy="no-referrer-when-downgrade">
+                                </iframe>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <div class="cfg-footer">
+                    <button class="btn btn-dark" type="submit" disabled="@guardando">
+                        @if (guardando)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        else
+                        {
+
+                            <i class="bi bi-check-lg me-2"></i>
+                        }
+                        Guardar cambios
+                    </button>
+                    @if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        <span class="cfg-save-msg @(saveOk ? "cfg-save-ok" : "cfg-save-err")">
+                            <i class="bi @(saveOk ? "bi-check-circle" : "bi-x-circle") me-1"></i>
+                            @message
+                        </span>
+                    }
+                </div>
+
+            </EditForm>
+        </div>
+    }
+</div>
+
+<style>
+    .cfg-shell {
+        max-width: 900px;
+    }
+
+    .cfg-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .cfg-title {
+        font-family: var(--font-display, Georgia, serif);
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: var(--navy, #0B1F3A);
+        margin: 0;
+    }
+
+    .cfg-subtitle {
+        font-size: .875rem;
+        color: var(--silver, #8a8a8e);
+        margin-top: .25rem;
+    }
+
+    .cfg-loading {
+        display: flex;
+        justify-content: center;
+        padding: 4rem;
+    }
+    /* Tabs */
+    .cfg-tabs {
+        display: flex;
+        gap: .25rem;
+        border-bottom: 2px solid var(--light-gray, #e8e6e1);
+        margin-bottom: 1.5rem;
+    }
+
+    .cfg-tab {
+        background: none;
+        border: none;
+        padding: .625rem 1.25rem;
+        font-size: .875rem;
+        font-weight: 500;
+        color: var(--silver, #8a8a8e);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        border-radius: 4px 4px 0 0;
+        transition: all 150ms;
+    }
+
+        .cfg-tab:hover {
+            color: var(--charcoal, #1c1c1e);
+            background: var(--ivory, #f8f6f1);
+        }
+
+    .cfg-tab-active {
+        color: var(--navy, #0B1F3A) !important;
+        border-bottom-color: var(--gold, #B8963E) !important;
+        font-weight: 600;
+    }
+    /* Panel */
+    .cfg-panel {
+        background: var(--white, #fff);
+        border: 1px solid var(--light-gray, #e8e6e1);
+        border-radius: 16px;
+        padding: 2rem;
+    }
+
+    .cfg-section-title {
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--silver, #8a8a8e);
+        margin-bottom: 1rem;
+        padding-bottom: .5rem;
+        border-bottom: 1px solid var(--light-gray, #e8e6e1);
+    }
+    /* Photo upload area */
+    .cfg-photo-area {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .cfg-photo-preview {
+        width: 160px;
+        height: 160px;
+        border-radius: 12px;
+        border: 2px dashed var(--light-gray, #e8e6e1);
+        overflow: hidden;
+        position: relative;
+        background: var(--ivory, #f8f6f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cfg-photo-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        padding: .5rem;
+    }
+
+    .cfg-photo-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .5rem;
+        color: var(--silver, #8a8a8e);
+        font-size: .8rem;
+    }
+
+        .cfg-photo-placeholder i {
+            font-size: 2.5rem;
+        }
+
+    .cfg-photo-remove {
+        position: absolute;
+        top: .375rem;
+        right: .375rem;
+        background: rgba(220,38,38,.85);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .7rem;
+        cursor: pointer;
+    }
+
+        .cfg-photo-remove:hover {
+            background: #DC2626;
+        }
+
+    .cfg-photo-upload-zone {
+        border: 2px dashed var(--light-gray, #e8e6e1);
+        border-radius: 10px;
+        padding: 1.25rem;
+        text-align: center;
+        background: var(--ivory, #f8f6f1);
+        transition: border-color 150ms;
+    }
+
+        .cfg-photo-upload-zone:hover {
+            border-color: var(--gold, #B8963E);
+        }
+
+    .cfg-photo-upload-icon {
+        font-size: 1.75rem;
+        color: var(--silver, #8a8a8e);
+    }
+
+    .cfg-photo-upload-text {
+        font-size: .85rem;
+        color: var(--charcoal, #1c1c1e);
+        margin: .375rem 0 .625rem;
+    }
+
+    .cfg-photo-btn {
+        cursor: pointer;
+    }
+
+    .cfg-photo-hint {
+        font-size: .72rem;
+        color: var(--silver, #8a8a8e);
+        margin: .5rem 0 0;
+    }
+
+    .cfg-smtp-info {
+        background: rgba(184,150,62,.08);
+        border: 1px solid rgba(184,150,62,.25);
+        color: #7a5c1a;
+        font-size: .85rem;
+        border-radius: 8px;
+    }
+
+    .cfg-footer {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--light-gray, #e8e6e1);
+    }
+
+    .cfg-save-msg {
+        font-size: .875rem;
+        font-weight: 500;
+    }
+
+    .cfg-save-ok {
+        color: #16A34A;
+    }
+
+    .cfg-save-err {
+        color: #DC2626;
+    }
+
+    .text-gold {
+        color: var(--gold, #B8963E);
+    }
+
+    @@media (max-width: 576px) {
+        .cfg-photo-area
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .cfg-photo-preview {
+        width: 100%;
+        height: 140px;
+    }
+
+    }
+</style>
+
+@code {
+    private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? config;
+    private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioUpdateRequest form = new();
+    private string activeTab = "estudio";
+
+    // Feedback
+    private bool guardando;
+    private string? message;
+    private bool saveOk;
+
+    // Foto
+    private bool cargandoFoto;
+    private string? fotoError;
+
+    // SMTP test
+    private string? emailPrueba;
+    private bool enviandoPrueba;
+    private string? mensajePrueba;
+    private bool pruebOk;
+    private bool mostrarPass;
+
+    protected override async Task OnInitializedAsync()
+    {
+        config = await ConfigService.GetAsync();
+        CargarForm(config);
+    }
+
+    private void CargarForm(LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse c)
+    {
+        form = new LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioUpdateRequest
+        {
+            NombreEstudio = c.NombreEstudio,
+            Slogan = c.Slogan,
+            LogoUrl = c.LogoUrl,
+            PhotoUrl = c.PhotoUrl,
+            ColorPrimario = c.ColorPrimario,
+            ColorSecundario = c.ColorSecundario,
+            ColorFondo = c.ColorFondo,
+            EmailContacto = c.EmailContacto,
+            TelefonoContacto = c.TelefonoContacto,
+            Direccion = c.Direccion,
+            IsActive = c.IsActive,
+            SmtpServer = c.SmtpServer,
+            SmtpPort = c.SmtpPort,
+            SmtpUser = c.SmtpUser,
+            SmtpPass = c.SmtpPass,
+            SmtpEnableSsl = c.SmtpEnableSsl,
+            SmtpFromName = c.SmtpFromName,
+            MapLatitude = c.MapLatitude,
+            MapLongitude = c.MapLongitude,
+            MapEmbedUrl = c.MapEmbedUrl
+        };
+    }
+
+    // ── Carga de imagen → Base64 ──────────────────────────────────
+    private async Task CargarImagen(Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs e)
+    {
+        fotoError = null;
+        cargandoFoto = true;
+
+        var file = e.File;
+
+        // Validar tipo
+        var tiposPermitidos = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!tiposPermitidos.Contains(file.ContentType))
+        {
+            fotoError = "Solo se permiten imágenes JPG, PNG o WebP.";
+            cargandoFoto = false;
+            return;
+        }
+
+        // Validar tamaño (2 MB)
+        const long maxBytes = 2 * 1024 * 1024;
+        if (file.Size > maxBytes)
+        {
+            fotoError = $"La imagen supera el límite de 2 MB ({file.Size / 1024 / 1024:F1} MB).";
+            cargandoFoto = false;
+            return;
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream(maxBytes);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            form.PhotoUrl = $"data:{file.ContentType};base64,{base64}";
+        }
+        catch (Exception ex)
+        {
+            fotoError = $"Error al procesar la imagen: {ex.Message}";
+        }
+        finally
+        {
+            cargandoFoto = false;
+        }
+    }
+
+    private void QuitarFoto() => form.PhotoUrl = null;
+
+    // ── Guardar ───────────────────────────────────────────────────
+    private async Task Guardar()
+    {
+        if (config is null) return;
+        guardando = true;
+        message = null;
+
+        var ok = await ConfigService.UpdateAsync(config.Id, form);
+        if (ok)
+        {
+            config = await ConfigService.GetAsync();
+            message = "Configuración guardada correctamente.";
+            saveOk = true;
+        }
+        else
+        {
+            message = "No se pudo guardar. Intente nuevamente.";
+            saveOk = false;
+        }
+        guardando = false;
+
+        _ = Task.Delay(4000).ContinueWith(_ =>
+        {
+            message = null;
+            InvokeAsync(StateHasChanged);
+        });
+    }
+
+    // ── Prueba SMTP ───────────────────────────────────────────────
+    private async Task EnviarPrueba()
+    {
+        if (string.IsNullOrWhiteSpace(emailPrueba)) return;
+        await Guardar();  // Guardar primero para que el servicio lea datos actuales
+
+        enviandoPrueba = true;
+        mensajePrueba = null;
+
+        var ok = await EmailService.EnviarAsync(
+            emailPrueba,
+            "Prueba de conexión SMTP — Lamilla Escudero",
+            "<p>¡Conexión SMTP funcionando correctamente! 🎉</p>");
+
+        pruebOk = ok;
+        mensajePrueba = ok
+            ? $"✅ Correo de prueba enviado a {emailPrueba}."
+            : "❌ No se pudo enviar. Verifica las credenciales SMTP.";
+        enviandoPrueba = false;
+    }
+
+    // ── URL mapa ──────────────────────────────────────────────────
+    private string ObtenerUrlMapa()
+    {
+        if (!string.IsNullOrWhiteSpace(form.MapEmbedUrl)) return form.MapEmbedUrl;
+        var lat = form.MapLatitude?.ToString("F6",
+                      System.Globalization.CultureInfo.InvariantCulture) ?? "0";
+        var lon = form.MapLongitude?.ToString("F6",
+                      System.Globalization.CultureInfo.InvariantCulture) ?? "0";
+        return $"https://www.openstreetmap.org/export/embed.html" +
+               $"?bbox={lon}&layer=mapnik&marker={lat}%2C{lon}";
+    }
+}

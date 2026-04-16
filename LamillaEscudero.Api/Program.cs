@@ -1,0 +1,106 @@
+﻿using System.Text;
+using Hangfire;
+using LamillaEscudero.Infrastructure;
+using LamillaEscudero.Infrastructure.Seed;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Hangfire.PostgreSql; // <--- ¡AGREGA ESTA LÍNEA AQUÍ!
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddInfrastructure(builder.Configuration);
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionString no configurada.");
+
+// 👇 CONFIGURACIÓN DE HANGFIRE 👇
+// 👇 NUEVA CONFIGURACIÓN DE HANGFIRE PARA POSTGRES 👇
+builder.Services.AddHangfire(config =>
+{
+    config.UseSimpleAssemblyNameTypeSerializer()
+          .UseRecommendedSerializerSettings()
+          // ¡Cambiamos UseSqlServerStorage por UsePostgreSqlStorage!
+          .UsePostgreSqlStorage(connectionString);
+});
+builder.Services.AddHangfireServer();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowWeb", policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowAnyOrigin();
+    });
+});
+
+var jwtSection = builder.Configuration.GetSection("Jwt");
+var jwtKey = jwtSection["Key"] ?? throw new InvalidOperationException("Jwt:Key no configurada.");
+var jwtIssuer = jwtSection["Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer no configurado.");
+var jwtAudience = jwtSection["Audience"] ?? throw new InvalidOperationException("Jwt:Audience no configurado.");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateIssuerSigningKey = true,
+        ValidateLifetime = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// ==========================================
+// 👇 BLOQUE TRY-CATCH PARA ATRAPAR EL ERROR 👇
+// ==========================================
+WebApplication app;
+try
+{
+    app = builder.Build();
+}
+catch (System.Reflection.ReflectionTypeLoadException ex)
+{
+    // Esto va a extraer el error real que está oculto
+    var erroresReales = string.Join("\n", ex.LoaderExceptions.Select(e => e?.Message));
+    throw new Exception($"\n=== ERROR REAL DETECTADO ===\n{erroresReales}\n===========================\n", ex);
+}
+// ==========================================
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+    // 👇 DASHBOARD DE HANGFIRE (Se ve en /hangfire) 👇
+    app.UseHangfireDashboard("/hangfire");
+}
+
+await DbSeeder.SeedAsync(app.Services);
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseCors("AllowWeb");
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+// 👇 TAREA PROGRAMADA DIARIA 👇
+RecurringJob.AddOrUpdate<LamillaEscudero.Application.Abstractions.IAutomationService>(
+    "recordatorios-diarios",
+    x => x.EjecutarAsync(CancellationToken.None),
+    Cron.Daily);
+
+app.Run(); ;

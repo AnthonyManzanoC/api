@@ -1,0 +1,933 @@
+﻿@page "/admin/consultas"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.IConsultaWebService ConsultaService
+@inject LamillaEscudero.Application.Abstractions.IEmailService EmailService
+
+<PageTitle>Consultas Web — CRM</PageTitle>
+
+<div class="crm-shell @(selectedId.HasValue ? "crm-split" : "")">
+
+    <div class="crm-list">
+
+        <div class="crm-list-header">
+            <div>
+                <h1 class="crm-title">
+                    <i class="bi bi-inbox-fill me-2 text-gold"></i>Consultas Web
+                </h1>
+                <p class="crm-subtitle">@consultas.Count consulta(s) registrada(s)</p>
+            </div>
+            <div class="crm-filters d-flex gap-2 align-items-center flex-wrap">
+                <select class="form-select form-select-sm" style="width:auto;"
+                        @bind="filtroEstado" @bind:after="FiltrarAsync">
+                    <option value="">Todos los estados</option>
+                    @foreach (var e in LamillaEscudero.Domain.Entities.EstadoConsulta.Todos)
+                    {
+                        <option value="@e">@e</option>
+                    }
+                </select>
+                <span class="crm-badge-count">
+                    @consultasFiltradas.Count(x => !x.Leida) sin leer
+                </span>
+            </div>
+        </div>
+
+        <div class="crm-cards">
+            @if (cargando)
+            {
+                <div class="crm-empty">
+                    <div class="spinner-border text-secondary" role="status"></div>
+                </div>
+            }
+            else if (!consultasFiltradas.Any())
+            {
+                <div class="crm-empty">
+                    <i class="bi bi-inbox" style="font-size:2rem;color:var(--silver);"></i>
+                    <span>No hay consultas que mostrar.</span>
+                </div>
+            }
+            else
+            {
+                @foreach (var c in consultasFiltradas.OrderByDescending(x => x.CreatedAt))
+                {
+                    <div class="crm-card @(selectedId == c.Id ? "crm-card-active" : "") @(!c.Leida ? "crm-card-unread" : "")"
+                         @onclick="() => Seleccionar(c)">
+                        <div class="crm-card-row1">
+                            <span class="crm-card-nombre">@c.Nombre</span>
+                            <span class="crm-estado-badge @EstadoCss(c.Estado)">@c.Estado</span>
+                        </div>
+                        <div class="crm-card-asunto">@c.Asunto</div>
+                        <div class="crm-card-meta">
+                            @if (!string.IsNullOrWhiteSpace(c.Email))
+                            {
+                                <span><i class="bi bi-envelope me-1"></i>@c.Email</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(c.Telefono))
+                            {
+                                <span><i class="bi bi-telephone me-1"></i>@c.Telefono</span>
+                            }
+                            <span><i class="bi bi-clock me-1"></i>@c.CreatedAt.ToString("dd/MM/yy HH:mm")</span>
+                            @if (!c.Leida)
+                            {
+                                <span class="crm-new-dot"></span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    @if (selected is not null)
+    {
+        <div class="crm-detail">
+
+            <div class="crm-detail-header">
+                <button class="crm-close-btn" @onclick="Cerrar" title="Cerrar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+                <div class="crm-detail-nombre">@selected.Nombre</div>
+                <div class="crm-detail-asunto">@selected.Asunto</div>
+                <div class="d-flex gap-2 flex-wrap mt-2">
+                    @if (!string.IsNullOrWhiteSpace(selected.Email))
+                    {
+                        <a class="crm-chip" href="mailto:@selected.Email">
+                            <i class="bi bi-envelope me-1"></i>@selected.Email
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(selected.Telefono))
+                    {
+                        <span class="crm-chip">
+                            <i class="bi bi-telephone me-1"></i>@selected.Telefono
+                        </span>
+                    }
+                    <span class="crm-chip">
+                        <i class="bi bi-calendar3 me-1"></i>@selected.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                    </span>
+                </div>
+            </div>
+
+            <div class="crm-detail-body">
+                <div class="crm-section-label">Mensaje del cliente</div>
+                <div class="crm-mensaje-box">@selected.Mensaje</div>
+
+                <div class="crm-section-label mt-4">Estado de la consulta</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach (var e in LamillaEscudero.Domain.Entities.EstadoConsulta.Todos)
+                    {
+                        <button class="crm-estado-btn @(editEstado == e ? EstadoCssFull(e) : "crm-estado-btn-off")"
+                                @onclick="() => editEstado = e">
+                            @e
+                        </button>
+                    }
+                </div>
+
+                <div class="crm-section-label mt-4">Fecha de cita <span class="text-muted">(opcional)</span></div>
+                <input class="form-control" type="datetime-local"
+                       value="@editFechaCitaStr"
+                       @oninput="e => editFechaCitaStr = e.Value?.ToString()" />
+
+                <div class="crm-section-label mt-3">Notas internas</div>
+                <textarea class="form-control" rows="3"
+                          @bind="editNotas"
+                          placeholder="Solo visible para el equipo..."></textarea>
+
+                <button class="btn btn-dark w-100 mt-3" @onclick="GuardarCRM" disabled="@guardandoCRM">
+                    @if (guardandoCRM)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-check-lg me-2"></i>
+                    }
+                    Guardar cambios
+                </button>
+
+                @if (!string.IsNullOrWhiteSpace(crmMsg))
+                {
+                    <div class="alert alert-info mt-2 py-2 text-center">@crmMsg</div>
+                }
+
+                <div class="crm-section-label mt-4">Acciones rápidas de correo</div>
+                @if (string.IsNullOrWhiteSpace(selected.Email))
+                {
+                    <p class="text-muted small">Este cliente no tiene correo registrado.</p>
+                }
+                else
+                {
+                    <div class="crm-email-actions">
+
+                        <button class="crm-email-btn crm-email-recepcion"
+                                @onclick="EnviarRecepcion" disabled="@enviandoEmail">
+                            <div class="crm-email-icon"><i class="bi bi-check-circle-fill"></i></div>
+                            <div>
+                                <div class="crm-email-btn-title">Confirmar recepción</div>
+                                <div class="crm-email-btn-sub">Le informamos que recibimos su consulta</div>
+                            </div>
+                        </button>
+
+                        <button class="crm-email-btn crm-email-cita"
+                                @onclick="EnviarConfirmacionCita" disabled="@(enviandoEmail || !FechaCita.HasValue)">
+                            <div class="crm-email-icon"><i class="bi bi-calendar-check-fill"></i></div>
+                            <div>
+                                <div class="crm-email-btn-title">Confirmar cita</div>
+                                <div class="crm-email-btn-sub">Notifica la cita agendada al cliente</div>
+                            </div>
+                        </button>
+
+                        <button class="crm-email-btn crm-email-recordatorio"
+                                @onclick="EnviarRecordatorio" disabled="@(enviandoEmail || !FechaCita.HasValue)">
+                            <div class="crm-email-icon"><i class="bi bi-bell-fill"></i></div>
+                            <div>
+                                <div class="crm-email-btn-title">Recordatorio de cita</div>
+                                <div class="crm-email-btn-sub">Recuerda al cliente su próxima cita</div>
+                            </div>
+                        </button>
+
+                        <button class="crm-email-btn crm-email-respuesta"
+                                @onclick="() => mostrarModalRespuesta = true"
+                                disabled="@enviandoEmail">
+                            <div class="crm-email-icon"><i class="bi bi-reply-fill"></i></div>
+                            <div>
+                                <div class="crm-email-btn-title">Enviar respuesta</div>
+                                <div class="crm-email-btn-sub">Responde directamente la consulta</div>
+                            </div>
+                        </button>
+
+                    </div>
+
+                    @if (enviandoEmail)
+                    {
+                        <div class="text-center mt-2 text-muted small">
+                            <span class="spinner-border spinner-border-sm me-1"></span>Enviando correo...
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(emailMsg))
+                    {
+                        <div class="alert @(emailOk ? "alert-success" : "alert-danger") mt-2 py-2 text-center">
+                            @emailMsg
+                        </div>
+                    }
+                }
+
+                <hr class="my-4" style="border-color:var(--light-gray);">
+                <button class="btn btn-outline-danger btn-sm w-100"
+                        @onclick="() => confirmarEliminar = true">
+                    <i class="bi bi-trash me-1"></i>Eliminar consulta
+                </button>
+                @if (confirmarEliminar)
+                {
+                    <div class="crm-confirm mt-2">
+                        <span>¿Seguro que deseas eliminar esta consulta?</span>
+                        <button class="btn btn-sm btn-danger" @onclick="Eliminar">Sí, eliminar</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => confirmarEliminar = false">Cancelar</button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (mostrarModalRespuesta)
+{
+    <div class="crm-modal-backdrop" @onclick="() => mostrarModalRespuesta = false">
+        <div class="crm-modal" @onclick:stopPropagation="true">
+            <div class="crm-modal-header">
+                <span>Enviar respuesta a @selected?.Nombre</span>
+                <button @onclick="() => mostrarModalRespuesta = false">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="crm-modal-body">
+                <label class="form-label">Mensaje de respuesta</label>
+                <textarea class="form-control" rows="6" @bind="textoRespuesta"
+                          placeholder="Estimado/a [nombre], en relación a su consulta..."></textarea>
+            </div>
+            <div class="crm-modal-footer">
+                <button class="btn btn-outline-secondary btn-sm"
+                        @onclick="() => mostrarModalRespuesta = false">
+                    Cancelar
+                </button>
+                <button class="btn btn-dark btn-sm" @onclick="EnviarRespuesta"
+                        disabled="@(enviandoEmail || string.IsNullOrWhiteSpace(textoRespuesta))">
+                    <i class="bi bi-send me-1"></i>Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* ── Shell ──────────────────────────────────── */
+    .crm-shell {
+        display: flex;
+        gap: 1.25rem;
+        height: calc(100vh - 120px);
+    }
+
+    .crm-list {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .crm-split .crm-list {
+        flex: 0 0 340px;
+    }
+
+    .crm-detail {
+        flex: 1;
+        min-width: 0;
+        background: var(--white,#fff);
+        border: 1px solid var(--light-gray,#e8e6e1);
+        border-radius: var(--radius-lg,16px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* ── Header lista ───────────────────────────── */
+    .crm-list-header {
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+
+    .crm-title {
+        font-family: var(--font-display,Georgia,serif);
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--navy,#0B1F3A);
+        margin: 0;
+    }
+
+    .crm-subtitle {
+        font-size: .8rem;
+        color: var(--silver,#8a8a8e);
+        margin: 0;
+    }
+
+    .crm-badge-count {
+        font-size: .75rem;
+        color: var(--gold,#B8963E);
+        font-weight: 600;
+        background: rgba(184,150,62,.1);
+        padding: .2rem .6rem;
+        border-radius: 100px;
+    }
+
+    .text-gold {
+        color: var(--gold,#B8963E);
+    }
+
+    /* ── Cards ──────────────────────────────────── */
+    .crm-cards {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+    }
+
+    .crm-card {
+        background: var(--white,#fff);
+        border: 1px solid var(--light-gray,#e8e6e1);
+        border-radius: var(--radius-md,8px);
+        padding: 1rem 1.125rem;
+        cursor: pointer;
+        transition: all 150ms;
+    }
+
+        .crm-card:hover {
+            border-color: var(--gold,#B8963E);
+            box-shadow: var(--shadow-sm);
+        }
+
+    .crm-card-active {
+        border-color: var(--navy,#0B1F3A) !important;
+        background: rgba(11,31,58,.02) !important;
+    }
+
+    .crm-card-unread {
+        border-left: 3px solid var(--gold,#B8963E);
+    }
+
+    .crm-card-row1 {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .crm-card-nombre {
+        font-weight: 600;
+        font-size: .9rem;
+        color: var(--charcoal,#1c1c1e);
+    }
+
+    .crm-card-asunto {
+        font-size: .82rem;
+        color: var(--charcoal,#1c1c1e);
+        margin: .25rem 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .crm-card-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        font-size: .73rem;
+        color: var(--silver,#8a8a8e);
+        margin-top: .25rem;
+        align-items: center;
+    }
+
+    .crm-new-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--gold,#B8963E);
+        flex-shrink: 0;
+    }
+
+    .crm-empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .75rem;
+        color: var(--silver);
+        font-size: .875rem;
+    }
+
+    /* ── Estado badges ──────────────────────────── */
+    .crm-estado-badge {
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        padding: .2rem .6rem;
+        border-radius: 100px;
+        white-space: nowrap;
+    }
+
+    .estado-pendiente {
+        background: #FEF9C3;
+        color: #713F12;
+    }
+
+    .estado-revision {
+        background: #DBEAFE;
+        color: #1E40AF;
+    }
+
+    .estado-cita {
+        background: #EDE9FE;
+        color: #5B21B6;
+    }
+
+    .estado-respondida {
+        background: #D1FAE5;
+        color: #065F46;
+    }
+
+    .estado-concluida {
+        background: #F3F4F6;
+        color: #374151;
+    }
+
+    /* ── Detail panel ───────────────────────────── */
+    .crm-detail-header {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--light-gray,#e8e6e1);
+        position: relative;
+    }
+
+    .crm-close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: none;
+        border: none;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--silver,#8a8a8e);
+        transition: all 150ms;
+    }
+
+        .crm-close-btn:hover {
+            background: var(--ivory,#f8f6f1);
+            color: var(--charcoal,#1c1c1e);
+        }
+
+    .crm-detail-nombre {
+        font-family: var(--font-display,Georgia,serif);
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--navy,#0B1F3A);
+    }
+
+    .crm-detail-asunto {
+        font-size: .875rem;
+        color: var(--silver,#8a8a8e);
+        margin-top: .25rem;
+    }
+
+    .crm-chip {
+        display: inline-flex;
+        align-items: center;
+        font-size: .78rem;
+        background: var(--ivory,#f8f6f1);
+        border: 1px solid var(--light-gray,#e8e6e1);
+        border-radius: 100px;
+        padding: .2rem .75rem;
+        color: var(--charcoal,#1c1c1e);
+        text-decoration: none;
+    }
+
+        .crm-chip:hover {
+            border-color: var(--gold,#B8963E);
+        }
+
+    .crm-detail-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+    }
+
+    .crm-section-label {
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--silver,#8a8a8e);
+        margin-bottom: .625rem;
+    }
+
+    .crm-mensaje-box {
+        background: var(--ivory,#f8f6f1);
+        border: 1px solid var(--light-gray,#e8e6e1);
+        border-radius: 8px;
+        padding: 1rem;
+        font-size: .875rem;
+        line-height: 1.65;
+        white-space: pre-wrap;
+    }
+
+    /* ── Estado buttons (selector) ──────────────── */
+    .crm-estado-btn {
+        border: 1.5px solid var(--light-gray,#e8e6e1);
+        background: none;
+        border-radius: 100px;
+        padding: .3rem .875rem;
+        font-size: .78rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 150ms;
+    }
+
+    .crm-estado-btn-off {
+        color: var(--silver,#8a8a8e);
+    }
+
+    .crm-estado-btn:hover {
+        border-color: var(--gold,#B8963E);
+    }
+
+    .estado-pendiente-full {
+        background: #FEF9C3;
+        border-color: #CA8A04 !important;
+        color: #713F12;
+    }
+
+    .estado-revision-full {
+        background: #DBEAFE;
+        border-color: #3B82F6 !important;
+        color: #1E40AF;
+    }
+
+    .estado-cita-full {
+        background: #EDE9FE;
+        border-color: #7C3AED !important;
+        color: #5B21B6;
+    }
+
+    .estado-respondida-full {
+        background: #D1FAE5;
+        border-color: #10B981 !important;
+        color: #065F46;
+    }
+
+    .estado-concluida-full {
+        background: #F3F4F6;
+        border-color: #6B7280 !important;
+        color: #374151;
+    }
+
+    /* ── Email actions ──────────────────────────── */
+    .crm-email-actions {
+        display: flex;
+        flex-direction: column;
+        gap: .625rem;
+    }
+
+    .crm-email-btn {
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+        border: 1.5px solid var(--light-gray,#e8e6e1);
+        border-radius: var(--radius-md,8px);
+        background: var(--white,#fff);
+        padding: .875rem 1rem;
+        cursor: pointer;
+        transition: all 150ms;
+        text-align: left;
+    }
+
+        .crm-email-btn:hover:not(:disabled) {
+            box-shadow: var(--shadow-sm);
+            transform: translateX(2px);
+        }
+
+        .crm-email-btn:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+    .crm-email-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .crm-email-btn-title {
+        font-size: .85rem;
+        font-weight: 600;
+        color: var(--charcoal,#1c1c1e);
+    }
+
+    .crm-email-btn-sub {
+        font-size: .75rem;
+        color: var(--silver,#8a8a8e);
+    }
+
+    .crm-email-recepcion .crm-email-icon {
+        background: #D1FAE5;
+        color: #059669;
+    }
+
+    .crm-email-cita .crm-email-icon {
+        background: #EDE9FE;
+        color: #7C3AED;
+    }
+
+    .crm-email-recordatorio .crm-email-icon {
+        background: #FEF3C7;
+        color: #D97706;
+    }
+
+    .crm-email-respuesta .crm-email-icon {
+        background: #DBEAFE;
+        color: #2563EB;
+    }
+
+    .crm-email-recepcion:hover {
+        border-color: #10B981;
+    }
+
+    .crm-email-cita:hover {
+        border-color: #7C3AED;
+    }
+
+    .crm-email-recordatorio:hover {
+        border-color: #D97706;
+    }
+
+    .crm-email-respuesta:hover {
+        border-color: #2563EB;
+    }
+
+    .crm-confirm {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        flex-wrap: wrap;
+        font-size: .85rem;
+        padding: .75rem;
+        background: #FEF2F2;
+        border-radius: 8px;
+    }
+
+    /* ── Modal respuesta ────────────────────────── */
+    .crm-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .crm-modal {
+        background: var(--white,#fff);
+        border-radius: var(--radius-lg,16px);
+        width: 520px;
+        max-width: 95vw;
+        overflow: hidden;
+        box-shadow: 0 24px 64px rgba(0,0,0,.2);
+    }
+
+    .crm-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--light-gray,#e8e6e1);
+        font-weight: 600;
+        font-size: .95rem;
+    }
+
+        .crm-modal-header button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--silver);
+            padding: .25rem;
+        }
+
+    .crm-modal-body {
+        padding: 1.5rem;
+    }
+
+    .crm-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: .75rem;
+        padding: 1rem 1.5rem;
+        border-top: 1px solid var(--light-gray,#e8e6e1);
+    }
+</style>
+
+@code {
+    // ── Datos ─────────────────────────────────────────────────────
+    private List<LamillaEscudero.Application.Models.Consultas.ConsultaWebResponse> consultas = new();
+    private List<LamillaEscudero.Application.Models.Consultas.ConsultaWebResponse> consultasFiltradas = new();
+    private string filtroEstado = "";
+    private bool cargando = true;
+
+    // ── Selección ─────────────────────────────────────────────────
+    private Guid? selectedId;
+    private LamillaEscudero.Application.Models.Consultas.ConsultaWebResponse? selected;
+
+    // ── Edición CRM ───────────────────────────────────────────────
+    private string editEstado = "";
+    private string editFechaCitaStr = "";
+    private string? editNotas;
+    private bool guardandoCRM;
+    private string? crmMsg;
+
+    private DateTime? FechaCita =>
+        DateTime.TryParse(editFechaCitaStr, out var d) ? d : null;
+
+    // ── Email ──────────────────────────────────────────────────────
+    private bool enviandoEmail;
+    private string? emailMsg;
+    private bool emailOk;
+    private bool mostrarModalRespuesta;
+    private string? textoRespuesta;
+
+    // ── Eliminar ──────────────────────────────────────────────────
+    private bool confirmarEliminar;
+
+    // ── Init ──────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        cargando = true;
+        consultas = await ConsultaService.GetAllAsync();
+        FiltrarAsync();
+        cargando = false;
+    }
+
+    private void FiltrarAsync()
+    {
+        consultasFiltradas = string.IsNullOrWhiteSpace(filtroEstado)
+            ? consultas
+            : consultas.Where(x => x.Estado == filtroEstado).ToList();
+    }
+
+    private void Seleccionar(LamillaEscudero.Application.Models.Consultas.ConsultaWebResponse c)
+    {
+        selected = c;
+        selectedId = c.Id;
+        editEstado = c.Estado ?? "Pendiente";
+        editFechaCitaStr = c.FechaCita.HasValue
+                                ? c.FechaCita.Value.ToString("yyyy-MM-ddTHH:mm")
+                                : "";
+        editNotas = c.NotasInternas;
+        emailMsg = null;
+        crmMsg = null;
+        confirmarEliminar = false;
+        mostrarModalRespuesta = false;
+    }
+
+    private void Cerrar()
+    {
+        selected = null;
+        selectedId = null;
+    }
+
+    private async Task GuardarCRM()
+    {
+        if (selected is null) return;
+        guardandoCRM = true;
+        crmMsg = null;
+
+        var req = new LamillaEscudero.Application.Models.Consultas.ConsultaWebUpdateRequest
+        {
+            Estado = editEstado,
+            FechaCita = FechaCita,
+            NotasInternas = editNotas
+        };
+
+        var ok = await ConsultaService.UpdateAsync(selected.Id, req);
+        if (ok)
+        {
+            await CargarAsync();
+            // ✅ CORRECCIÓN: Forma correcta de actualizar el registro seleccionado en C# clásico (sin usar record `with`)
+            selected = consultas.FirstOrDefault(x => x.Id == selectedId);
+            crmMsg = "✅ Cambios guardados.";
+        }
+        else
+        {
+            crmMsg = "❌ Error al guardar.";
+        }
+        guardandoCRM = false;
+    }
+
+    // ── Acciones email ────────────────────────────────────────────
+
+    private async Task EnviarRecepcion()
+    {
+        if (selected?.Email is null) return;
+        enviandoEmail = true;
+        emailMsg = null;
+
+        var ok = await EmailService.EnviarConfirmacionRecepcionAsync(
+            selected.Email, selected.Nombre, selected.Asunto);
+
+        emailOk = ok;
+        emailMsg = ok
+            ? "✅ Correo de recepción enviado."
+            : "❌ Error al enviar. Revisa la config SMTP.";
+        enviandoEmail = false;
+    }
+
+    private async Task EnviarConfirmacionCita()
+    {
+        if (selected?.Email is null || !FechaCita.HasValue) return;
+        enviandoEmail = true;
+        emailMsg = null;
+
+        // Guardar la cita primero si no se ha guardado
+        await GuardarCRM();
+
+        var ok = await EmailService.EnviarConfirmacionCitaAsync(
+            selected.Email, selected.Nombre, FechaCita.Value, selected.Asunto);
+
+        emailOk = ok;
+        emailMsg = ok ? "✅ Confirmación de cita enviada." : "❌ Error al enviar.";
+        enviandoEmail = false;
+    }
+
+    private async Task EnviarRecordatorio()
+    {
+        if (selected?.Email is null || !FechaCita.HasValue) return;
+        enviandoEmail = true;
+        emailMsg = null;
+
+        var ok = await EmailService.EnviarRecordatorioCitaAsync(
+            selected.Email, selected.Nombre, FechaCita.Value, selected.Asunto);
+
+        emailOk = ok;
+        emailMsg = ok ? "✅ Recordatorio enviado." : "❌ Error al enviar.";
+        enviandoEmail = false;
+    }
+
+    private async Task EnviarRespuesta()
+    {
+        if (selected?.Email is null || string.IsNullOrWhiteSpace(textoRespuesta)) return;
+        enviandoEmail = true;
+        mostrarModalRespuesta = false;
+
+        var ok = await EmailService.EnviarRespuestaConsultaAsync(
+            selected.Email, selected.Nombre, selected.Asunto, textoRespuesta);
+
+        emailOk = ok;
+        emailMsg = ok ? "✅ Respuesta enviada al cliente." : "❌ Error al enviar.";
+
+        if (ok)
+        {
+            // Actualizar estado a Respondida automáticamente
+            editEstado = LamillaEscudero.Domain.Entities.EstadoConsulta.Respondida;
+            await GuardarCRM();
+        }
+
+        textoRespuesta = null;
+        enviandoEmail = false;
+    }
+
+    private async Task Eliminar()
+    {
+        if (selected is null) return;
+        await ConsultaService.DeleteAsync(selected.Id);
+        Cerrar();
+        await CargarAsync();
+    }
+
+    // ── Helpers CSS ───────────────────────────────────────────────
+    private static string EstadoCss(string estado) => estado switch
+    {
+        "Pendiente" => "crm-estado-badge estado-pendiente",
+        "En Revisión" => "crm-estado-badge estado-revision",
+        "Cita Agendada" => "crm-estado-badge estado-cita",
+        "Respondida" => "crm-estado-badge estado-respondida",
+        "Concluida" => "crm-estado-badge estado-concluida",
+        _ => "crm-estado-badge estado-pendiente"
+    };
+
+    private static string EstadoCssFull(string estado) => estado switch
+    {
+        "Pendiente" => "crm-estado-btn estado-pendiente-full",
+        "En Revisión" => "crm-estado-btn estado-revision-full",
+        "Cita Agendada" => "crm-estado-btn estado-cita-full",
+        "Respondida" => "crm-estado-btn estado-respondida-full",
+        "Concluida" => "crm-estado-btn estado-concluida-full",
+        _ => "crm-estado-btn estado-pendiente-full"
+    };
+}

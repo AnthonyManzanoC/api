@@ -1,0 +1,142 @@
+﻿@page "/admin/notificaciones"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.INotificacionService NotificacionService
+
+<PageTitle>Notificaciones — Lamilla Escudero</PageTitle>
+
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold" style="color: var(--navy); font-family: var(--font-display); font-size: 1.5rem;">
+            <i class="bi bi-bell text-gold me-2"></i>Centro de Notificaciones
+        </h5>
+
+        @* 👇 NUEVO BOTÓN MÁGICO PARA FORZAR LA LECTURA DE PLAZOS 👇 *@
+        <button class="btn btn-sm btn-outline-secondary" @onclick="SincronizarAlertas" disabled="@isSyncing">
+            @if (isSyncing)
+            {
+                <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                <span>Revisando...</span>
+            }
+            else
+            {
+                <i class="bi bi-arrow-repeat me-1"></i>
+                <span>Sincronizar Alertas</span>
+            }
+        </button>
+    </div>
+
+    <div class="card-body p-0">
+        @if (notificaciones == null)
+        {
+            <div class="p-5 text-center text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div> Cargando...
+            </div>
+        }
+        else if (!notificaciones.Any())
+        {
+            <div class="p-5 text-center dash-empty">
+                <i class="bi bi-check2-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+                <h5 class="fw-semibold text-muted">Todo al día</h5>
+                <p class="text-muted small">No tienes notificaciones pendientes de leer en este momento.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle dash-table mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="ps-4">Notificación</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th class="text-end pe-4">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var n in notificaciones)
+                        {
+                            <tr class="@(n.Leida ? "" : "bg-light")">
+                                <td class="ps-4">
+                                    <div class="fw-semibold" style="color: var(--navy);">@n.Titulo</div>
+                                    <div class="text-muted small">@n.Mensaje</div>
+                                </td>
+                                <td>
+                                    <span class="dash-badge @(n.Tipo == "Vencido" ? "dash-badge-danger" : "dash-badge-warning")">
+                                        @n.Tipo
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (n.Leida)
+                                    {
+                                        <span class="text-muted small"><i class="bi bi-check-all me-1"></i>Leída</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="fw-bold small" style="color: var(--gold);"><i class="bi bi-envelope-exclamation me-1"></i>Nueva</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-4">
+                                    @if (!n.Leida)
+                                    {
+                                        <button class="btn btn-sm btn-outline-primary me-2" @onclick="() => MarcarLeida(n.Id)" title="Marcar como leída">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    }
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Eliminar(n.Id)" title="Eliminar">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<LamillaEscudero.Application.Models.Notificaciones.NotificacionResponse>? notificaciones;
+    private bool isSyncing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarNotificaciones();
+    }
+
+    private async Task CargarNotificaciones()
+    {
+        notificaciones = await NotificacionService.GetAllAsync();
+    }
+
+    // 👇 LA FUNCIÓN QUE INVOCA A TU CÓDIGO DE MOTOR DE ALERTAS 👇
+    private async Task SincronizarAlertas()
+    {
+        isSyncing = true;
+
+        // El sistema busca plazos a punto de vencer (3 días o menos) y genera las notificaciones
+        await NotificacionService.GenerarRecordatoriosDePlazosAsync(3);
+
+        // El sistema busca plazos cuya fecha ya pasó y genera notificaciones rojas
+        await NotificacionService.GenerarRecordatoriosVencidosAsync();
+
+        // Recargamos la lista para ver las nuevas alertas en pantalla
+        await CargarNotificaciones();
+
+        isSyncing = false;
+    }
+
+    private async Task MarcarLeida(Guid id)
+    {
+        await NotificacionService.MarkAsReadAsync(id);
+        await CargarNotificaciones();
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await NotificacionService.DeleteAsync(id);
+        await CargarNotificaciones();
+    }
+}

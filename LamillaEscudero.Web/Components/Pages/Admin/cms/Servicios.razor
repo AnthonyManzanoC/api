@@ -1,0 +1,213 @@
+﻿@page "/admin/cms/servicios"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador,Abogado")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.IServicioOfrecidoService ServicioService
+
+<PageTitle>CMS — Servicios Ofrecidos</PageTitle>
+
+<div class="cms-grid">
+
+    @* ── Formulario ──────────────────────────────────── *@
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <strong>
+                    <i class="bi bi-briefcase me-2" style="color:var(--gold);"></i>
+                    @(editId is null ? "Nuevo servicio" : "Editar servicio")
+                </strong>
+            </div>
+            <div class="card-body">
+
+                @if (!string.IsNullOrWhiteSpace(msg))
+                {
+                    <div class="alert @(isError ? "alert-danger" : "alert-info") small py-2 mb-3">@msg</div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Título <span class="text-danger">*</span></label>
+                    <input class="form-control" @bind="form.Titulo" placeholder="Ej: Derecho Penal" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción corta <span class="text-danger">*</span></label>
+                    <textarea class="form-control" rows="2" @bind="form.DescripcionCorta"
+                              placeholder="Una o dos oraciones que resumen el servicio..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Detalles completos <span class="text-muted small">(se muestra al expandir)</span></label>
+                    <textarea class="form-control" rows="5" @bind="form.Detalles"
+                              placeholder="Descripción extensa del servicio, ámbito de aplicación, etc."></textarea>
+                </div>
+
+                <div class="row g-2 mb-4">
+                    <div class="col">
+                        <label class="form-label">
+                            Ícono Bootstrap
+                            <a href="https://icons.getbootstrap.com" target="_blank"
+                               class="text-gold small ms-1" style="color:var(--gold);">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi @(string.IsNullOrWhiteSpace(form.Icono) ? "bi-briefcase" : form.Icono)"></i>
+                            </span>
+                            <input class="form-control" @bind="form.Icono" placeholder="bi-briefcase" />
+                        </div>
+                        <div class="form-text">Ej: bi-shield-check, bi-house-heart, bi-people</div>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label">Orden</label>
+                        <input class="form-control" type="number" @bind="form.Orden" min="0" />
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-dark" @onclick="Guardar" disabled="@saving">
+                        @if (saving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        <i class="bi bi-floppy me-1"></i>Guardar
+                    </button>
+                    @if (editId is not null)
+                    {
+                        <button class="btn btn-outline-secondary" @onclick="Limpiar">
+                            <i class="bi bi-x-lg me-1"></i>Cancelar
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Listado ──────────────────────────────────────── *@
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <strong>
+                    <i class="bi bi-grid me-2" style="color:var(--gold);"></i>
+                    Servicios publicados (@servicios.Count)
+                </strong>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3" style="width:52px;"></th>
+                                <th>Servicio</th>
+                                <th class="text-center">Orden</th>
+                                <th class="text-end pe-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var s in servicios)
+                            {
+                                <tr>
+                                    <td class="ps-3 text-center">
+                                        <div style="width:38px;height:38px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(11,31,58,.06),rgba(184,150,62,.1));display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--gold);">
+                                            <i class="bi @(s.Icono ?? "bi-briefcase")"></i>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium small" style="color:var(--navy);">@s.Titulo</div>
+                                        <div class="text-muted" style="font-size:.72rem;">
+                                            @(s.DescripcionCorta.Length > 60
+                                                                                    ? s.DescripcionCorta[..60] + "…"
+                                                                                    : s.DescripcionCorta)
+                                    </div>
+                                </td>
+                                <td class="text-center small">@s.Orden</td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-outline-primary me-1"
+                                            @onclick="() => Editar(s)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => Eliminar(s.Id)">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                                                        }
+                            @if (!servicios.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted small">
+                                        Sin servicios. El sitio usará los servicios estáticos de respaldo.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoResponse> servicios = new();
+    private LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoCreateRequest form = new();
+    private Guid? editId;
+    private string? msg;
+    private bool isError;
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+        => servicios = await ServicioService.GetAllAsync();
+
+    private async Task Guardar()
+    {
+        if (string.IsNullOrWhiteSpace(form.Titulo) || string.IsNullOrWhiteSpace(form.DescripcionCorta))
+        {
+            msg = "Título y Descripción corta son obligatorios."; isError = true; return;
+        }
+        saving = true;
+        try
+        {
+            if (editId is null)
+                await ServicioService.CreateAsync(form);
+            else
+                await ServicioService.UpdateAsync(editId.Value,
+                    new LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoUpdateRequest
+                    {
+                        Titulo = form.Titulo,
+                        DescripcionCorta = form.DescripcionCorta,
+                        Detalles = form.Detalles,
+                        Icono = form.Icono,
+                        Orden = form.Orden,
+                        IsActive = true
+                    });
+            msg = "Guardado correctamente."; isError = false;
+            servicios = await ServicioService.GetAllAsync();
+            Limpiar();
+        }
+        finally { saving = false; }
+    }
+
+    private void Editar(LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoResponse s)
+    {
+        editId = s.Id;
+        form = new()
+        {
+            Titulo = s.Titulo,
+            DescripcionCorta = s.DescripcionCorta,
+            Detalles = s.Detalles,
+            Icono = s.Icono,
+            Orden = s.Orden
+        };
+        msg = null;
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await ServicioService.DeleteAsync(id);
+        servicios = await ServicioService.GetAllAsync();
+    }
+
+    private void Limpiar() { editId = null; form = new(); msg = null; }
+}

@@ -1,0 +1,35 @@
+﻿@* 
+    ╔══════════════════════════════════════════════════════════╗
+    ║  IMPORTANTE: NO poner @rendermode aquí.                  ║
+    ║  Cada página declara su propio modo.                     ║
+    ║  Login.razor DEBE ser SSR para que SignInManager         ║
+    ║  pueda escribir la cookie de autenticación.              ║
+    ╚══════════════════════════════════════════════════════════╝
+*@
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(LamillaEscudero.Web.Components.Layout.MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated != true)
+                {
+                    <RedirectToLogin />
+                }
+                else
+                {
+                    <p class="text-center py-5 text-muted">No tienes acceso a esta sección.</p>
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Página no encontrada</PageTitle>
+        <LayoutView Layout="@typeof(LamillaEscudero.Web.Components.Layout.MainLayout)">
+            <div class="container text-center py-5">
+                <h1 class="display-4 text-muted">404</h1>
+                <p>La página solicitada no existe.</p>
+                <a href="/" class="btn btn-dark">Volver al inicio</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

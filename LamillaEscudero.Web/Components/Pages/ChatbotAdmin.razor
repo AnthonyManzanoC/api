@@ -1,0 +1,197 @@
+﻿@* ════════════════════════════════════════════════════════════
+   ChatbotAdmin.razor — Asistente interno offline
+   Ayuda al equipo con recordatorios, búsquedas rápidas y
+   preguntas sobre el sistema. No usa API externa.
+   Coloca en AdminLayout: <ChatbotAdmin />
+   ════════════════════════════════════════════════════════════ *@
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject LamillaEscudero.Application.Abstractions.IDashboardService DashboardService
+
+<button class="chat-fab"
+        style="background: linear-gradient(135deg, var(--gold), #a07a28); right: 2rem; bottom: 2rem;"
+        title="Asistente interno"
+        @onclick="Toggle">
+    <i class="bi @(isOpen ? "bi-x-lg" : "bi-stars")"></i>
+</button>
+
+@if (isOpen)
+{
+    <div class="chat-window">
+        <div class="chat-header" style="background: linear-gradient(135deg, #1a3a5c, var(--navy));">
+            <div class="chat-header-avatar">
+                <i class="bi bi-stars"></i>
+            </div>
+            <div class="chat-header-info">
+                <span class="chat-header-name">Asistente LE — Admin</span>
+                <span class="chat-header-status">
+                    <span class="chat-online-dot"></span>Modo interno
+                </span>
+            </div>
+            <button class="chat-close-btn" @onclick="Toggle"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div class="chat-messages" @ref="msgBox">
+            @foreach (var m in messages)
+            {
+                <div class="chat-msg @(m.IsBot ? "chat-msg-bot" : "chat-msg-user")">
+                    <div class="chat-bubble">@((MarkupString)m.Html)</div>
+                    <span class="chat-msg-time">@m.Time.ToString("HH:mm")</span>
+                </div>
+            }
+            @if (typing)
+            {
+                <div class="chat-msg chat-msg-bot">
+                    <div class="chat-bubble" style="color:var(--silver); font-style:italic;">procesando...</div>
+                </div>
+            }
+        </div>
+
+        @if (chips.Any() && !typing)
+        {
+            <div class="chat-suggestions">
+                @foreach (var c in chips)
+                {
+                    <button class="chat-suggestion-btn" @onclick="() => FireChip(c.Label, c.Action)">
+                        @c.Label
+                    </button>
+                }
+            </div>
+        }
+
+        <div class="chat-input-row">
+            <input class="chat-input" placeholder="Pregunta al asistente..."
+                   @bind="input" @bind:event="oninput"
+                   @onkeydown="OnKey" maxlength="400" />
+            <button class="chat-send-btn" @onclick="Send"><i class="bi bi-send-fill"></i></button>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isOpen;
+    private bool typing;
+    private string input = string.Empty;
+    private ElementReference msgBox;
+
+    private record Msg(string Html, bool IsBot, DateTime Time);
+    private record Chip(string Label, string Action);
+    private List<Msg> messages = new();
+    private List<Chip> chips = new();
+
+    protected override void OnInitialized()
+    {
+        Add("👋 Hola. Soy tu asistente interno. Puedo ayudarte a navegar el sistema, " +
+            "recordarte acciones pendientes o responder preguntas sobre las funcionalidades.", true);
+        SetChips("inicio");
+    }
+
+    private void Toggle() => isOpen = !isOpen;
+
+    private async Task Send()
+    {
+        var txt = input.Trim();
+        if (string.IsNullOrWhiteSpace(txt)) return;
+        input = string.Empty;
+        Add(txt, false);
+        chips = new();
+        typing = true;
+        StateHasChanged();
+        await Task.Delay(500);
+        typing = false;
+        var (html, ctx) = GetReply(txt.ToLowerInvariant());
+        Add(html, true);
+        SetChips(ctx);
+        StateHasChanged();
+    }
+
+    private async Task FireChip(string label, string action)
+    {
+        if (action.StartsWith("nav:"))
+        {
+            Nav.NavigateTo(action[4..]);
+            return;
+        }
+        input = label;
+        await Send();
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Send();
+    }
+
+    private void Add(string html, bool isBot)
+        => messages.Add(new(html, isBot, DateTime.Now));
+
+    // ── Árbol de respuestas admin ─────────────────────────────────
+    private (string Html, string Ctx) GetReply(string q)
+    {
+        if (M(q, "cliente", "clientes"))
+            return ("<b>Clientes:</b> Ve a <a href='/admin/clientes' style='color:var(--gold);'>/admin/clientes</a> para crear, editar o desactivar clientes. Cada cliente puede tener múltiples causas asociadas.", "nav-clientes");
+
+        if (M(q, "causa", "causas", "proceso", "expediente"))
+            return ("<b>Causas:</b> Gestiona en <a href='/admin/causas' style='color:var(--gold);'>/admin/causas</a>. Las causas penales aceptan Número de Proceso y/o Expediente Fiscal. Las civiles requieren Número de Proceso.", "nav-causas");
+
+        if (M(q, "evento", "audiencia", "diligencia"))
+            return ("<b>Eventos Procesales:</b> En <a href='/admin/eventos' style='color:var(--gold);'>/admin/eventos</a> puedes registrar audiencias marcando ✅ 'Requiere Asistencia' para que aparezcan en el Dashboard y generen alertas.", "nav-eventos");
+
+        if (M(q, "plazo", "vencimiento", "vence"))
+            return ("<b>Plazos:</b> En <a href='/admin/plazos' style='color:var(--gold);'>/admin/plazos</a> gestiona fechas límite. El sistema genera alertas automáticas 3 días antes del vencimiento.", "nav-plazos");
+
+        if (M(q, "notificacion", "alerta", "recordatorio"))
+            return ("<b>Notificaciones:</b> El sistema genera alertas automáticas diariamente via Hangfire. También puedes sincronizar manualmente en <a href='/admin/notificaciones' style='color:var(--gold);'>/admin/notificaciones</a>.", "nav-notificaciones");
+
+        if (M(q, "usuario", "cuenta", "acceso", "contraseña", "password"))
+            return ("<b>Centro de Cuentas:</b> Solo el Administrador puede crear usuarios. Ve a <a href='/admin/cuentas' style='color:var(--gold);'>/admin/cuentas</a> para crear Asistentes, Abogados o vincular Clientes al portal.", "nav-cuentas");
+
+        if (M(q, "dashboard", "resumen", "inicio", "panel"))
+            return ("El <b>Dashboard</b> en <a href='/admin' style='color:var(--gold);'>/admin</a> muestra KPIs, plazos próximos, audiencias del día y últimas notificaciones en tiempo real.", "nav-dashboard");
+
+        if (M(q, "configuracion", "logo", "color", "nombre estudio"))
+            return ("En <a href='/admin/configuracion' style='color:var(--gold);'>/admin/configuracion</a> puedes actualizar el nombre del estudio, colores corporativos y datos de contacto que se muestran en la web pública.", "nav-config");
+
+        if (M(q, "equipo", "miembro", "abogado", "biografía"))
+            return ("En <a href='/admin/cms/miembros' style='color:var(--gold);'>/admin/cms/miembros</a> puedes gestionar las tarjetas del equipo que aparecen en el Home público.", "nav-cms");
+
+        if (M(q, "servicio ofrecido", "cms", "web pública", "home"))
+            return ("En <a href='/admin/cms/servicios' style='color:var(--gold);'>/admin/cms/servicios</a> gestiona los servicios que aparecen en la sección 'Áreas de Práctica' del sitio público.", "nav-cms");
+
+        if (M(q, "consulta web", "formulario público", "mensaje de cliente"))
+            return ("Las consultas recibidas por el formulario público están en <a href='/admin/consultas' style='color:var(--gold);'>/admin/consultas</a>. Las no leídas se muestran en el contador del Dashboard.", "nav-consultas");
+
+        if (M(q, "migración", "ef", "entity framework", "base de datos"))
+            return ("<b>Migración Phase 6:</b> Ejecuta en la terminal:<br/><code style='background:rgba(0,0,0,.08);padding:.1rem .4rem;border-radius:4px;font-size:.8rem;'>dotnet ef database update</code><br/>Esto crea las tablas MiembrosEstudio, ServiciosOfrecidos y agrega UserId a Clientes.", "inicio");
+
+        if (M(q, "gracias", "ok", "entendí", "perfecto"))
+            return ("¡Con gusto! ¿En qué más puedo ayudarte?", "inicio");
+
+        return ("No tengo una respuesta específica para eso. Intenta con: <em>clientes, causas, plazos, notificaciones, cuentas, CMS</em> o <em>dashboard</em>.", "inicio");
+    }
+
+    private static bool M(string q, params string[] kw)
+        => kw.Any(k => q.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+    private void SetChips(string ctx)
+    {
+        chips = ctx switch
+        {
+            "inicio" => new() {
+                new("Ver Dashboard",       "nav:/admin"),
+                new("Gestionar clientes",  "nav:/admin/clientes"),
+                new("Ver notificaciones",  "nav:/admin/notificaciones"),
+            },
+            "nav-clientes" => new() { new("Ir a Clientes", "nav:/admin/clientes"), new("Crear causa", "causas") },
+            "nav-causas" => new() { new("Ir a Causas", "nav:/admin/causas"), new("Agregar evento", "evento") },
+            "nav-eventos" => new() { new("Ir a Eventos", "nav:/admin/eventos"), new("Ver plazos", "plazo") },
+            "nav-plazos" => new() { new("Ir a Plazos", "nav:/admin/plazos") },
+            "nav-notificaciones" => new() { new("Ir a Notificaciones", "nav:/admin/notificaciones") },
+            "nav-cuentas" => new() { new("Centro de Cuentas", "nav:/admin/cuentas") },
+            "nav-cms" => new() {
+                new("CMS Miembros",  "nav:/admin/cms/miembros"),
+                new("CMS Servicios", "nav:/admin/cms/servicios"),
+            },
+            _ => new() { new("Ir al Dashboard", "nav:/admin") }
+        };
+    }
+}

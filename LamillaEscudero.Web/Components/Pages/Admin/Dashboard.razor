@@ -1,0 +1,553 @@
+﻿@page "/admin"
+@page "/admin/dashboard"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.IDashboardService DashboardService
+@inject NavigationManager Nav
+
+<PageTitle>Dashboard — Lamilla Escudero</PageTitle>
+
+@if (data is null)
+{
+    <div class="dash-loading">
+        <div class="spinner-border text-muted" role="status" style="width:2rem;height:2rem;border-width:2px;"></div>
+        <span class="ms-3 text-muted">Cargando información...</span>
+    </div>
+}
+else
+{
+    @* ══════════════════════════════════════════════════════════
+       KPI CARDS — 5 tarjetas con audiencias incluidas
+       ══════════════════════════════════════════════════════════ *@
+    <div class="dash-kpis" style="grid-template-columns: repeat(5, 1fr);">
+
+        <div class="kpi-card kpi-navy" @onclick='() => Nav.NavigateTo("/admin/clientes")' style="cursor:pointer;">
+            <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+            <div class="kpi-body">
+                <span class="kpi-value">@data.TotalClientes</span>
+                <span class="kpi-label">Clientes</span>
+            </div>
+            <span class="kpi-sub">@data.ClientesActivos activos</span>
+        </div>
+
+        <div class="kpi-card kpi-gold" @onclick='() => Nav.NavigateTo("/admin/causas")' style="cursor:pointer;">
+            <div class="kpi-icon"><i class="bi bi-briefcase-fill"></i></div>
+            <div class="kpi-body">
+                <span class="kpi-value">@data.TotalCausas</span>
+                <span class="kpi-label">Causas</span>
+            </div>
+            <span class="kpi-sub">@data.CausasActivas activas</span>
+        </div>
+
+        <div class="kpi-card kpi-alert" @onclick='() => Nav.NavigateTo("/admin/plazos")' style="cursor:pointer;">
+            <div class="kpi-icon"><i class="bi bi-clock-history"></i></div>
+            <div class="kpi-body">
+                <span class="kpi-value">@data.PlazosVencenHoy</span>
+                <span class="kpi-label">Plazos hoy</span>
+            </div>
+            <span class="kpi-sub">@data.PlazosProximos7Dias próximos 7d</span>
+        </div>
+
+        @* ✅ KPI ORIGINAL: Audiencias hoy *@
+        <div class="kpi-card" @onclick='() => Nav.NavigateTo("/admin/eventos")' style="cursor:pointer; background: linear-gradient(135deg, #1a3a5c, #0d2137); color: white;">
+            <div class="kpi-icon"><i class="bi bi-calendar-check-fill"></i></div>
+            <div class="kpi-body">
+                <span class="kpi-value">@data.AudienciasHoy</span>
+                <span class="kpi-label">Audiencias hoy</span>
+            </div>
+            <span class="kpi-sub">@data.AudienciasProximos7Dias diligencias en 7d</span>
+        </div>
+
+        <div class="kpi-card kpi-neutral" @onclick='() => Nav.NavigateTo("/admin/consultas")' style="cursor:pointer;">
+            <div class="kpi-icon"><i class="bi bi-bell-fill"></i></div>
+            <div class="kpi-body">
+                <span class="kpi-value">@data.NotificacionesSinLeer</span>
+                <span class="kpi-label">Alertas</span>
+            </div>
+            <span class="kpi-sub">@data.ConsultasWebSinLeer consultas sin leer</span>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════
+       ALERTA PROMINENTE si hay audiencias hoy (Del diseño original)
+       ══════════════════════════════════════════════════════════ *@
+    @if (data.AudienciasHoy > 0)
+    {
+        <div class="mb-3 p-3 rounded-3 d-flex align-items-center gap-3"
+             style="background: linear-gradient(90deg, rgba(11,31,58,.07), rgba(184,150,62,.07)); border: 1.5px solid rgba(184,150,62,.35);">
+            <div style="font-size: 1.75rem;">🏛</div>
+            <div>
+                <div class="fw-bold" style="color: var(--navy);">
+                    @data.AudienciasHoy diligencia@(data.AudienciasHoy > 1 ? "s" : "") programada@(data.AudienciasHoy > 1 ? "s" : "") para hoy
+                </div>
+                <div class="small text-muted">Revisa tu agenda a continuación para ver horarios exactos.</div>
+            </div>
+            <a href="/admin/eventos" class="btn btn-sm btn-dark ms-auto">Ver eventos</a>
+        </div>
+    }
+
+    @* ══════════════════════════════════════════════════════════
+       FASE 8: Métricas CRM de Consultas por Estado
+       ══════════════════════════════════════════════════════════ *@
+    <div class="crm-metrics-title mt-4">
+        <i class="bi bi-funnel-fill me-2 text-gold"></i>
+        Estado del CRM — Consultas
+        <a href="/admin/consultas" class="crm-metrics-link">Ver todas →</a>
+    </div>
+
+    <div class="crm-metrics-grid">
+        <div class="crm-metric-card crm-pending" @onclick='() => Nav.NavigateTo("/admin/consultas")' style="cursor:pointer;">
+            <div class="crm-metric-icon"><i class="bi bi-clock-history"></i></div>
+            <div class="crm-metric-body">
+                <div class="crm-metric-value">@data.ConsultasPendientes</div>
+                <div class="crm-metric-label">Pendientes</div>
+            </div>
+            <div class="crm-metric-bar">
+                <div class="crm-metric-bar-fill crm-bar-pending" style="width:@BarWidth(data.ConsultasPendientes, data)%"></div>
+            </div>
+        </div>
+
+        <div class="crm-metric-card crm-review" @onclick='() => Nav.NavigateTo("/admin/consultas")' style="cursor:pointer;">
+            <div class="crm-metric-icon"><i class="bi bi-eye-fill"></i></div>
+            <div class="crm-metric-body">
+                <div class="crm-metric-value">@data.ConsultasEnRevision</div>
+                <div class="crm-metric-label">En Revisión</div>
+            </div>
+            <div class="crm-metric-bar">
+                <div class="crm-metric-bar-fill crm-bar-review" style="width:@BarWidth(data.ConsultasEnRevision, data)%"></div>
+            </div>
+        </div>
+
+        <div class="crm-metric-card crm-appt" @onclick='() => Nav.NavigateTo("/admin/consultas")' style="cursor:pointer;">
+            <div class="crm-metric-icon"><i class="bi bi-calendar-check-fill"></i></div>
+            <div class="crm-metric-body">
+                <div class="crm-metric-value">@data.ConsultasCitasAgendadas</div>
+                <div class="crm-metric-label">Citas Agendadas</div>
+            </div>
+            <div class="crm-metric-bar">
+                <div class="crm-metric-bar-fill crm-bar-appt" style="width:@BarWidth(data.ConsultasCitasAgendadas, data)%"></div>
+            </div>
+        </div>
+
+        <div class="crm-metric-card crm-replied" @onclick='() => Nav.NavigateTo("/admin/consultas")' style="cursor:pointer;">
+            <div class="crm-metric-icon"><i class="bi bi-reply-fill"></i></div>
+            <div class="crm-metric-body">
+                <div class="crm-metric-value">@data.ConsultasRespondidas</div>
+                <div class="crm-metric-label">Respondidas</div>
+            </div>
+            <div class="crm-metric-bar">
+                <div class="crm-metric-bar-fill crm-bar-replied" style="width:@BarWidth(data.ConsultasRespondidas, data)%"></div>
+            </div>
+        </div>
+
+        <div class="crm-metric-card crm-done" @onclick='() => Nav.NavigateTo("/admin/consultas")' style="cursor:pointer;">
+            <div class="crm-metric-icon"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="crm-metric-body">
+                <div class="crm-metric-value">@data.ConsultasConcluidas</div>
+                <div class="crm-metric-label">Concluidas</div>
+            </div>
+            <div class="crm-metric-bar">
+                <div class="crm-metric-bar-fill crm-bar-done" style="width:@BarWidth(data.ConsultasConcluidas, data)%"></div>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════
+       GRID PRINCIPAL (ORIGINAL) — 2 columnas
+       ══════════════════════════════════════════════════════════ *@
+    <div class="dash-grid">
+
+        @* ── Próximos plazos ──────────────────────────────── *@
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <div class="dash-card-title">
+                    <i class="bi bi-calendar-check text-gold me-2"></i>
+                    Próximos plazos
+                </div>
+                <a href="/admin/plazos" class="dash-card-action">Ver todos →</a>
+            </div>
+            <div class="dash-card-body">
+                @if (!data.ProximosPlazos.Any())
+                {
+                    <div class="dash-empty">
+                        <i class="bi bi-check-circle text-muted"></i>
+                        <span>Sin plazos próximos</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="dash-table-wrap">
+                        <table class="dash-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Causa</th>
+                                    <th>Vence</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in data.ProximosPlazos)
+                                {
+                                    var dias = (p.FechaVencimiento.Date - DateTime.Today).Days;
+                                    <tr>
+                                        <td class="fw-medium">@p.Titulo</td>
+                                        <td class="text-muted small">@p.NumeroProceso</td>
+                                        <td class="small">@p.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                                        <td>
+                                            @if (dias == 0)
+                                            {
+                                                <span class="dash-badge dash-badge-danger">Hoy</span>
+                                            }
+                                            else if (dias <= 2)
+                                            {
+                                                <span class="dash-badge dash-badge-warning">@dias días</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="dash-badge dash-badge-ok">@dias días</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ── Agenda de audiencias y diligencias (Diseño Original) ─── *@
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <div class="dash-card-title">
+                    <i class="bi bi-calendar-week text-gold me-2"></i>
+                    Agenda — Próximas diligencias
+                </div>
+                <a href="/admin/eventos" class="dash-card-action">Ver todas →</a>
+            </div>
+            <div class="dash-card-body">
+                @if (!data.ProximasAudiencias.Any())
+                {
+                    <div class="dash-empty">
+                        <i class="bi bi-calendar3 text-muted"></i>
+                        <span>No hay audiencias programadas</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="dash-table-wrap">
+                        <table class="dash-table">
+                            <thead>
+                                <tr>
+                                    <th>Diligencia</th>
+                                    <th>Causa</th>
+                                    <th>Fecha y Hora</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in data.ProximasAudiencias)
+                                {
+                                    var esHoy = a.FechaHoraAgendada?.Date == DateTime.Today;
+                                    var diasAudiencia = a.FechaHoraAgendada.HasValue
+                                    ? (a.FechaHoraAgendada.Value.Date - DateTime.Today).Days
+                                    : int.MaxValue;
+
+                                    <tr class="@(esHoy ? "table-warning" : "")">
+                                        <td>
+                                            <div class="fw-medium small d-flex align-items-center gap-1">
+                                                @if (esHoy)
+                                                {
+                                                    <i class="bi bi-circle-fill text-warning" style="font-size:.5rem;"></i>
+                                                }
+                                                @a.Tipo
+                                            </div>
+                                            <div class="text-muted" style="font-size:.7rem;">
+                                                @(a.Descripcion.Length > 40 ? a.Descripcion[..40] + "…" : a.Descripcion)
+                                            </div>
+                                        </td>
+                                        <td class="small text-muted">@a.IdentificadorCausa</td>
+                                        <td>
+                                            @if (a.FechaHoraAgendada.HasValue)
+                                            {
+                                                <div class="small fw-medium" style="color: var(--navy);">
+                                                    @a.FechaHoraAgendada.Value.ToString("dd/MM/yyyy")
+                                                </div>
+                                                <div class="small text-muted">
+                                                    @a.FechaHoraAgendada.Value.ToString("HH:mm") hs
+                                                </div>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (diasAudiencia == 0)
+                                            {
+                                                <span class="dash-badge dash-badge-danger">HOY</span>
+                                            }
+                                            else if (diasAudiencia == 1)
+                                            {
+                                                <span class="dash-badge dash-badge-warning">Mañana</span>
+                                            }
+                                            else if (diasAudiencia <= 7)
+                                            {
+                                                <span class="dash-badge dash-badge-ok">@diasAudiencia días</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="dash-badge" style="background:#f1f5f9;color:#64748b;">@diasAudiencia días</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* ── Últimas notificaciones (fila completa) ─────── *@
+        <div class="dash-card" style="grid-column: 1 / -1;">
+            <div class="dash-card-header">
+                <div class="dash-card-title">
+                    <i class="bi bi-bell text-gold me-2"></i>
+                    Últimas notificaciones del sistema
+                </div>
+                <a href="/admin/notificaciones" class="dash-card-action">Ver todas →</a>
+            </div>
+            <div class="dash-card-body p-0">
+                @if (!data.UltimasNotificaciones.Any())
+                {
+                    <div class="dash-empty">
+                        <i class="bi bi-bell-slash text-muted"></i>
+                        <span>Sin notificaciones</span>
+                    </div>
+                }
+                else
+                {
+                    <ul class="notif-list">
+                        @foreach (var n in data.UltimasNotificaciones.Take(6))
+                        {
+                            <li class="notif-item @(n.Leida ? "" : "notif-unread")">
+                                <div class="notif-dot @GetNotifColor(n.Tipo)"></div>
+                                <div class="notif-content">
+                                    <span class="notif-title">@n.Titulo</span>
+                                    <span class="notif-msg">@n.Mensaje</span>
+                                </div>
+                                <span class="notif-badge">@n.Tipo</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* ── CRM Metrics section ─────────────────────────────────── */
+    .crm-metrics-title {
+        font-family: var(--font-display, Georgia, serif);
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--navy, #0B1F3A);
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .crm-metrics-link {
+        margin-left: auto;
+        font-size: .78rem;
+        font-weight: 500;
+        color: var(--gold, #B8963E);
+        text-decoration: none;
+    }
+
+        .crm-metrics-link:hover {
+            color: var(--navy, #0B1F3A);
+        }
+
+    .crm-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: .875rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .crm-metric-card {
+        background: var(--white, #fff);
+        border: 1px solid var(--light-gray, #e8e6e1);
+        border-radius: 14px;
+        padding: 1.25rem 1rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+        transition: all 200ms;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .crm-metric-card:hover {
+            box-shadow: var(--shadow-md, 0 4px 16px rgba(11,31,58,.10));
+            transform: translateY(-2px);
+        }
+
+    .crm-metric-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .crm-metric-body {
+        flex: 1;
+    }
+
+    .crm-metric-value {
+        font-family: var(--font-display, Georgia, serif);
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--charcoal, #1c1c1e);
+    }
+
+    .crm-metric-label {
+        font-size: .75rem;
+        color: var(--silver, #8a8a8e);
+        margin-top: .15rem;
+        font-weight: 500;
+    }
+
+    .crm-metric-bar {
+        height: 4px;
+        background: var(--light-gray, #e8e6e1);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .crm-metric-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 600ms ease;
+    }
+
+    /* Variantes por estado */
+    .crm-pending .crm-metric-icon {
+        background: #FEF9C3;
+        color: #CA8A04;
+    }
+
+    .crm-pending {
+        border-top: 3px solid #CA8A04;
+    }
+
+    .crm-bar-pending {
+        background: #CA8A04;
+    }
+
+    .crm-review .crm-metric-icon {
+        background: #DBEAFE;
+        color: #2563EB;
+    }
+
+    .crm-review {
+        border-top: 3px solid #2563EB;
+    }
+
+    .crm-bar-review {
+        background: #2563EB;
+    }
+
+    .crm-appt .crm-metric-icon {
+        background: #EDE9FE;
+        color: #7C3AED;
+    }
+
+    .crm-appt {
+        border-top: 3px solid #7C3AED;
+    }
+
+    .crm-bar-appt {
+        background: #7C3AED;
+    }
+
+    .crm-replied .crm-metric-icon {
+        background: #D1FAE5;
+        color: #059669;
+    }
+
+    .crm-replied {
+        border-top: 3px solid #059669;
+    }
+
+    .crm-bar-replied {
+        background: #059669;
+    }
+
+    .crm-done .crm-metric-icon {
+        background: #F3F4F6;
+        color: #6B7280;
+    }
+
+    .crm-done {
+        border-top: 3px solid #9CA3AF;
+    }
+
+    .crm-bar-done {
+        background: #9CA3AF;
+    }
+
+    .text-gold {
+        color: var(--gold, #B8963E);
+    }
+
+    @@media (max-width: 1100px) {
+        .crm-metrics-grid
+
+    {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    }
+
+    @@media (max-width: 700px) {
+        .crm-metrics-grid
+
+    {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    }
+</style>
+
+@code {
+    private LamillaEscudero.Application.Models.Dashboard.DashboardSummaryResponse? data;
+
+    protected override async Task OnInitializedAsync()
+    {
+        data = await DashboardService.GetSummaryAsync();
+    }
+
+    /// Calcula el ancho proporcional de la barra de progreso (máx 100%)
+    private static int BarWidth(int valor, LamillaEscudero.Application.Models.Dashboard.DashboardSummaryResponse d)
+    {
+        var total = d.ConsultasPendientes + d.ConsultasEnRevision
+                  + d.ConsultasCitasAgendadas + d.ConsultasRespondidas
+                  + d.ConsultasConcluidas;
+        if (total == 0) return 0;
+        return (int)Math.Min(100, Math.Round(valor * 100.0 / total));
+    }
+
+    private static string GetNotifColor(string tipo) => tipo switch
+    {
+        "Recordatorio" => "notif-dot-gold",
+        "Vencido" => "notif-dot-red",
+        "Audiencia" => "notif-dot-navy",
+        _ => "notif-dot-navy"
+    };
+}

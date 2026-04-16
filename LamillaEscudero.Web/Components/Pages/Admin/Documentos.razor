@@ -1,0 +1,129 @@
+﻿@page "/admin/documentos"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject IClienteService ClienteService
+@inject ICausaService CausaService
+@inject IDocumentoService DocumentoService
+
+<PageTitle>Documentos</PageTitle>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>Subir documento</strong></div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <label class="form-label">Causa</label>
+                    <InputSelect class="form-select" @bind-Value="causaId" @oninput="CargaDocumentosEvent">
+                        <option value="00000000-0000-0000-0000-000000000000">Seleccione...</option>
+                        @foreach (var c in causas)
+                        {
+                            <option value="@c.Id">@c.NumeroProceso</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Nombre</label>
+                    <InputText class="form-control" @bind-Value="nombre" />
+                </div>
+                <div class="mb-2">
+                    <InputFile OnChange="SeleccionarArchivo" />
+                </div>
+
+                <button class="btn btn-dark" @onclick="Subir" disabled="@((archivo is null) || causaId == Guid.Empty)">Subir</button>
+
+                @if (!string.IsNullOrWhiteSpace(message))
+                {
+                    <div class="alert alert-info mt-3">@message</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>Documentos de la causa</strong></div>
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Archivo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in documentos)
+                        {
+                            <tr>
+                                <td>@d.Nombre</td>
+                                <td><a href="@d.RutaArchivo" target="_blank">Ver</a></td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Eliminar(d.Id)">Eliminar</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<CausaResponse> causas = new();
+    private List<DocumentoResponse> documentos = new();
+    private Guid causaId;
+    private string nombre = string.Empty;
+    private IBrowserFile? archivo;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        causas = await CausaService.GetAllAsync();
+    }
+
+    private async Task CargaDocumentosEvent(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var id))
+        {
+            causaId = id;
+            await CargaDocumentos();
+        }
+    }
+
+    private async Task CargaDocumentos()
+    {
+        if (causaId != Guid.Empty)
+            documentos = await DocumentoService.GetByCausaIdAsync(causaId);
+        else
+            documentos = new();
+    }
+
+    private void SeleccionarArchivo(InputFileChangeEventArgs e)
+    {
+        archivo = e.File;
+    }
+
+    private async Task Subir()
+    {
+        if (archivo is null || causaId == Guid.Empty)
+            return;
+
+        await using var stream = archivo.OpenReadStream(maxAllowedSize: 50_000_000);
+        await DocumentoService.UploadAsync(causaId, nombre, stream, archivo.Name, archivo.ContentType);
+
+        message = "Documento subido correctamente.";
+        nombre = string.Empty;
+        archivo = null;
+
+        await CargaDocumentos();
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await DocumentoService.DeleteAsync(id);
+        await CargaDocumentos();
+    }
+}

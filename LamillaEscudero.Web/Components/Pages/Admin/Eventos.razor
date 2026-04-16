@@ -1,0 +1,378 @@
+﻿@page "/admin/eventos"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject ICausaService CausaService
+@inject IEventoProcesalService EventoService
+
+<PageTitle>Eventos Procesales — Lamilla Escudero</PageTitle>
+
+<div class="row g-4">
+
+    @* ══════════════════════════════════════════════════════════
+       FORMULARIO
+       ══════════════════════════════════════════════════════════ *@
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">
+                <strong>@(editingId is null ? "Nuevo evento procesal" : "Editar evento")</strong>
+            </div>
+            <div class="card-body">
+
+                @if (!string.IsNullOrWhiteSpace(formError))
+                {
+                    <div class="alert alert-danger small py-2 mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>@formError
+                    </div>
+                }
+
+                <EditForm Model="form" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+
+                    @* Causa *@
+                    <div class="mb-3">
+                        <label class="form-label">Causa</label>
+                        <InputSelect class="form-select" @bind-Value="form.CausaId">
+                            <option value="00000000-0000-0000-0000-000000000000">— Seleccione —</option>
+                            @foreach (var c in causas)
+                            {
+                                @* Mostramos el identificador visual para causas penales *@
+                                <option value="@c.Id">@c.IdentificadorVisual — @c.ClienteNombre</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    @* Tipo *@
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de evento</label>
+                        <InputSelect class="form-select" @bind-Value="form.Tipo">
+                            <option value="">— Seleccione —</option>
+                            <optgroup label="Fiscalía / Investigación">
+                                <option value="Versión libre">Versión libre</option>
+                                <option value="Formulación de cargos">Formulación de cargos</option>
+                                <option value="Acto urgente">Acto urgente</option>
+                                <option value="Reconocimiento de lugar">Reconocimiento de lugar</option>
+                            </optgroup>
+                            <optgroup label="Audiencias judiciales">
+                                <option value="Audiencia preparatoria de juicio">Audiencia preparatoria</option>
+                                <option value="Audiencia de juicio">Audiencia de juicio</option>
+                                <option value="Audiencia de apelación">Audiencia de apelación</option>
+                                <option value="Audiencia de conciliación">Audiencia de conciliación</option>
+                                <option value="Audiencia de excepciones">Audiencia de excepciones</option>
+                            </optgroup>
+                            <optgroup label="Trámites">
+                                <option value="Notificación">Notificación</option>
+                                <option value="Citación">Citación</option>
+                                <option value="Pericia">Pericia</option>
+                                <option value="Informe">Informe</option>
+                                <option value="Resolución">Resolución</option>
+                                <option value="Sentencia">Sentencia</option>
+                                <option value="Otro">Otro</option>
+                            </optgroup>
+                        </InputSelect>
+                    </div>
+
+                    @* Descripción *@
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <InputTextArea class="form-control" rows="2" @bind-Value="form.Descripcion"
+                                       placeholder="Detalle del evento procesal..." />
+                    </div>
+
+                    @* Fecha del evento (referencia general) *@
+                    <div class="mb-3">
+                        <label class="form-label">Fecha del evento</label>
+                        <InputDate class="form-control" @bind-Value="form.FechaEvento" />
+                    </div>
+
+                    @* ════════════════════════════════════════════════════
+                       SECCIÓN DILIGENCIA — Se activa con checkbox
+                       ════════════════════════════════════════════════════ *@
+                    <div class="mb-3 p-3 rounded" style="background: @(form.RequiereAsistencia ? "rgba(11,31,58,.05)" : "transparent"); border: 1.5px solid @(form.RequiereAsistencia ? "var(--navy)" : "var(--light-gray)"); transition: all 200ms;">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   id="requiereAsistencia"
+                                   @bind="form.RequiereAsistencia"
+                                   @onclick="OnRequiereAsistenciaChanged" />
+                            <label class="form-check-label fw-medium" for="requiereAsistencia"
+                                   style="color: var(--navy);">
+                                <i class="bi bi-calendar-check me-1"></i>
+                                Es diligencia / Requiero asistir físicamente
+                            </label>
+                        </div>
+
+                        @* Campo de hora exacta — solo visible si RequiereAsistencia = true *@
+                        @if (form.RequiereAsistencia)
+                        {
+                            <div class="mt-3 pt-3" style="border-top: 1px solid var(--light-gray);">
+                                <label class="form-label" style="color: var(--navy);">
+                                    <i class="bi bi-clock me-1"></i>Fecha y hora exacta de la diligencia
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <input type="datetime-local"
+                                       class="form-control"
+                                       value="@FormatDateTimeLocal(form.FechaHoraAgendada)"
+                                       @onchange="OnFechaHoraChanged" />
+                                <div class="form-text">
+                                    <i class="bi bi-bell me-1 text-gold"></i>
+                                    El sistema generará una alerta automática 2 días antes de esta diligencia.
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @* Automatismo y fuente *@
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <InputCheckbox class="form-check-input" @bind-Value="form.EsAutomatico" id="esAuto" />
+                                <label class="form-check-label small" for="esAuto">Evento automático (scraping)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <InputText class="form-control form-control-sm" @bind-Value="form.Fuente"
+                                       placeholder="Fuente del evento" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-dark" type="submit" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            }
+                            <i class="bi bi-floppy me-1"></i>Guardar
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" @onclick="Limpiar">
+                            <i class="bi bi-x-lg me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════════════
+       LISTADO
+       ══════════════════════════════════════════════════════════ *@
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <strong>Eventos procesales (@eventos.Count)</strong>
+                <div class="d-flex gap-2 align-items-center">
+                    @* Filtro por tipo *@
+                    <select class="form-select form-select-sm" style="width:160px" @bind="filtroAsistencia">
+                        <option value="todos">Todos</option>
+                        <option value="diligencias">Solo diligencias</option>
+                        <option value="otros">Sin asistencia</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Tipo / Causa</th>
+                                <th>Descripción</th>
+                                <th>Agenda</th>
+                                <th class="text-end pe-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var e in EventosFiltrados)
+                            {
+                                <tr class="@(e.RequiereAsistencia ? "table-warning" : "")">
+                                    <td class="ps-3">
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (e.RequiereAsistencia)
+                                            {
+                                                <i class="bi bi-calendar-check text-warning" title="Requiere asistencia"></i>
+                                            }
+                                            <div>
+                                                <div class="fw-medium small">@e.Tipo</div>
+                                                <div class="text-muted" style="font-size:.72rem;">@e.IdentificadorCausa</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="small text-muted">
+                                            @(e.Descripcion.Length > 60 ? e.Descripcion[..60] + "…" : e.Descripcion)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (e.RequiereAsistencia && e.FechaHoraAgendada.HasValue)
+                                        {
+                                            var dias = (e.FechaHoraAgendada.Value.Date - DateTime.Today).Days;
+                                            <div class="small fw-medium" style="color: var(--navy);">
+                                                @e.FechaHoraAgendada.Value.ToString("dd/MM HH:mm")
+                                            </div>
+                                            <div class="mt-1">
+                                                @if (dias < 0)
+                                                {
+                                                    <span class="dash-badge" style="background:#f1f5f9;color:#64748b;">Pasada</span>
+                                                }
+                                                else if (dias == 0)
+                                                {
+                                                    <span class="dash-badge dash-badge-danger">HOY</span>
+                                                }
+                                                else if (dias <= 2)
+                                                {
+                                                    <span class="dash-badge dash-badge-warning">@dias días</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="dash-badge dash-badge-ok">@dias días</span>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() => Editar(e)" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => Eliminar(e.Id)" title="Eliminar">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!EventosFiltrados.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted small">
+                                        <i class="bi bi-inbox me-1"></i>Sin eventos procesales.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<CausaResponse> causas = new();
+    private List<EventoProcesalResponse> eventos = new();
+    private EventoProcesalCreateRequest form = new();
+    private Guid? editingId;
+    private string? formError;
+    private bool isSaving;
+    private string filtroAsistencia = "todos";
+
+    private IEnumerable<EventoProcesalResponse> EventosFiltrados => filtroAsistencia switch
+    {
+        "diligencias" => eventos.Where(e => e.RequiereAsistencia),
+        "otros" => eventos.Where(e => !e.RequiereAsistencia),
+        _ => eventos
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        causas = await CausaService.GetAllAsync();
+        eventos = await EventoService.GetAllAsync();
+    }
+
+    private void OnRequiereAsistenciaChanged()
+    {
+        // Si se desmarca, limpiamos la hora agendada
+        if (!form.RequiereAsistencia)
+            form.FechaHoraAgendada = null;
+    }
+
+    private void OnFechaHoraChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var dt))
+            form.FechaHoraAgendada = dt;
+    }
+
+    private static string FormatDateTimeLocal(DateTime? dt)
+        => dt.HasValue ? dt.Value.ToString("yyyy-MM-ddTHH:mm") : string.Empty;
+
+    private async Task Guardar()
+    {
+        formError = null;
+        isSaving = true;
+
+        // Validación adicional: si requiere asistencia, debe tener fecha/hora
+        if (form.RequiereAsistencia && !form.FechaHoraAgendada.HasValue)
+        {
+            formError = "Debes ingresar la fecha y hora exacta de la diligencia.";
+            isSaving = false;
+            return;
+        }
+
+        try
+        {
+            if (editingId is null)
+            {
+                await EventoService.CreateAsync(form);
+            }
+            else
+            {
+                var update = new EventoProcesalUpdateRequest
+                {
+                    CausaId = form.CausaId,
+                    Tipo = form.Tipo,
+                    Descripcion = form.Descripcion,
+                    FechaEvento = form.FechaEvento,
+                    EsAutomatico = form.EsAutomatico,
+                    Fuente = form.Fuente,
+                    RequiereAsistencia = form.RequiereAsistencia,
+                    FechaHoraAgendada = form.FechaHoraAgendada,
+                    IsActive = true
+                };
+                await EventoService.UpdateAsync(editingId.Value, update);
+            }
+            eventos = await EventoService.GetAllAsync();
+            Limpiar();
+        }
+        catch (InvalidOperationException ex)
+        {
+            formError = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Editar(EventoProcesalResponse e)
+    {
+        editingId = e.Id;
+        form = new EventoProcesalCreateRequest
+        {
+            CausaId = e.CausaId,
+            Tipo = e.Tipo,
+            Descripcion = e.Descripcion,
+            FechaEvento = e.FechaEvento,
+            EsAutomatico = e.EsAutomatico,
+            Fuente = e.Fuente,
+            RequiereAsistencia = e.RequiereAsistencia,
+            FechaHoraAgendada = e.FechaHoraAgendada
+        };
+        formError = null;
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await EventoService.DeleteAsync(id);
+        eventos = await EventoService.GetAllAsync();
+    }
+
+    private void Limpiar()
+    {
+        editingId = null;
+        form = new EventoProcesalCreateRequest();
+        formError = null;
+    }
+}

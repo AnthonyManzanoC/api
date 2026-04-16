@@ -1,0 +1,732 @@
+﻿@* ════════════════════════════════════════════════════════════
+   ChatbotPublico.razor — Chatbot con máquina de estados
+   Captura leads (nombre, email, teléfono, asunto, mensaje)
+   y los guarda automáticamente via IConsultaWebService.
+   ════════════════════════════════════════════════════════════ *@
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject LamillaEscudero.Application.Abstractions.IConsultaWebService ConsultaService
+
+<button class="chat-fab @(!isOpen ? "chat-fab-pulse" : "")"
+        title="¿En qué podemos ayudarte?"
+        @onclick="ToggleChat">
+    <i class="bi @(isOpen ? "bi-x-lg" : "bi-chat-dots-fill")"></i>
+    @if (badgeCount > 0 && !isOpen)
+    {
+        <span class="chat-fab-badge">@badgeCount</span>
+    }
+</button>
+
+@if (isOpen)
+{
+    <div class="chat-window">
+
+        <div class="chat-header">
+            <div class="chat-header-avatar">
+                <i class="bi bi-robot"></i>
+            </div>
+            <div class="chat-header-info">
+                <span class="chat-header-name">Asistente Legal LE</span>
+                <span class="chat-header-status">
+                    <span class="chat-online-dot"></span>En línea
+                </span>
+            </div>
+            <button class="chat-close-btn" @onclick="ToggleChat" title="Cerrar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="chat-messages" @ref="messagesContainer">
+            @foreach (var msg in messages)
+            {
+                <div class="chat-msg @(msg.IsBot ? "chat-msg-bot" : "chat-msg-user")">
+                    <div class="chat-bubble">
+                        @if (msg.IsHtml)
+                        {
+                            @((Microsoft.AspNetCore.Components.MarkupString)msg.Text)
+                        }
+                        else
+                        {
+                            @msg.Text
+                        }
+                    </div>
+                    <span class="chat-msg-time">@msg.Time.ToString("HH:mm")</span>
+                </div>
+            }
+            @if (isTyping)
+            {
+                <div class="chat-msg chat-msg-bot">
+                    <div class="chat-bubble chat-typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (suggestions.Any() && !isTyping)
+        {
+            <div class="chat-suggestions">
+                @foreach (var s in suggestions)
+                {
+                    <button class="chat-suggestion-btn" @onclick="() => SendSuggestion(s)">@s</button>
+                }
+            </div>
+        }
+
+        <div class="chat-input-row">
+            <input class="chat-input"
+                   type="@inputType"
+                   placeholder="@inputPlaceholder"
+                   @bind="inputText"
+                   @bind:event="oninput"
+                   @onkeydown="OnKeyDown"
+                   maxlength="500" />
+            <button class="chat-send-btn" @onclick="SendUserMessage" title="Enviar">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    // ── Estado base ───────────────────────────────────────────────
+    private bool isOpen;
+    private bool isTyping;
+    private int badgeCount;
+    private string inputText = string.Empty;
+    private string inputType = "text";
+    private string inputPlaceholder = "Escribe tu mensaje...";
+    private ElementReference messagesContainer;
+    private List<string> suggestions = new();
+
+    private record ChatMessage(string Text, bool IsBot, DateTime Time, bool IsHtml = false);
+    private List<ChatMessage> messages = new();
+
+    // ── Máquina de estados para captura de lead ───────────────────
+    private enum LeadStep { None, Nombre, Email, Telefono, Asunto, Mensaje, Confirmar, Guardado }
+    private LeadStep leadStep = LeadStep.None;
+
+    private string leadNombre = string.Empty;
+    private string leadEmail = string.Empty;
+    private string leadTelefono = string.Empty;
+    private string leadAsunto = string.Empty;
+    private string leadMensaje = string.Empty;
+
+    // ── Init ──────────────────────────────────────────────────────
+    protected override void OnInitialized()
+    {
+        messages.Add(new(
+            "👋 ¡Hola! Soy el asistente virtual de <strong>Lamilla Escudero &amp; Asociados</strong>. " +
+            "Puedo orientarte sobre nuestros servicios o ayudarte a enviar una consulta.",
+            true, DateTime.Now, IsHtml: true));
+        SetSuggestions("inicio");
+        badgeCount = 1;
+    }
+
+    private void ToggleChat()
+    {
+        isOpen = !isOpen;
+        badgeCount = 0;
+    }
+
+    // ── Envío de mensajes ─────────────────────────────────────────
+    private async Task SendUserMessage()
+    {
+        var text = inputText.Trim();
+        if (string.IsNullOrWhiteSpace(text)) return;
+        inputText = string.Empty;
+
+        messages.Add(new(text, false, DateTime.Now));
+        suggestions = new();
+        isTyping = true;
+        StateHasChanged();
+
+        await Task.Delay(600);
+        isTyping = false;
+
+        await ProcessInput(text);
+        StateHasChanged();
+        await ScrollToBottom();
+    }
+
+    private async Task SendSuggestion(string text)
+    {
+        inputText = text;
+        await SendUserMessage();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SendUserMessage();
+    }
+
+    // ── Motor principal ───────────────────────────────────────────
+    private async Task ProcessInput(string text)
+    {
+        if (leadStep != LeadStep.None && leadStep != LeadStep.Guardado)
+        {
+            await ProcessLeadInput(text);
+            return;
+        }
+
+        var lower = text.ToLowerInvariant();
+
+        if (Matches(lower, "hola", "buenos", "buenas", "saludos"))
+        {
+            Bot("¡Hola! Me alegra saludarte. ¿En qué puedo ayudarte hoy?");
+            SetSuggestions("inicio");
+            return;
+        }
+
+        if (Matches(lower, "servicio", "área", "especialidad", "hacen", "ofrecen", "ayuda"))
+        {
+            BotHtml(
+                "<strong>Nuestras áreas de práctica:</strong><br>" +
+                "⚖️ <strong>Derecho Civil</strong> — contratos, obligaciones<br>" +
+                "👨‍👩‍👧 <strong>Derecho Familiar</strong> — divorcio, alimentos<br>" +
+                "🏛 <strong>Derecho Penal</strong> — defensa, investigación<br>" +
+                "💼 <strong>Derecho Laboral</strong> — despidos, indemnizaciones<br>" +
+                "🏢 <strong>Derecho Mercantil</strong> — empresas, contratos"
+            );
+            SetSuggestions("servicios");
+            return;
+        }
+
+        if (Matches(lower, "contact", "agendar", "cita", "consulta", "hablar", "necesito", "quiero"))
+        {
+            Bot("¡Perfecto! Te ayudaré a registrar tu consulta. Solo necesito algunos datos. ¿Me dices tu nombre completo?");
+            leadStep = LeadStep.Nombre;
+            inputPlaceholder = "Tu nombre completo...";
+            suggestions = new();
+            return;
+        }
+
+        if (Matches(lower, "horario", "hora", "cuando", "atención", "abierto"))
+        {
+            Bot("Nuestro horario de atención es de lunes a viernes, de 08:30 a 17:30. Los sábados hasta las 12:00.");
+            SetSuggestions("horario");
+            return;
+        }
+
+        if (Matches(lower, "precio", "costo", "cobran", "honorario", "cuanto"))
+        {
+            Bot("Los honorarios varían según el tipo y complejidad del caso. Lo mejor es agendar una consulta inicial donde el abogado podrá orientarte sin costo.");
+            SetSuggestions("precios");
+            return;
+        }
+
+        if (Matches(lower, "ubicación", "dirección", "dónde", "donde", "oficina", "llevar"))
+        {
+            Bot("Puedes ver nuestra ubicación exacta en la página de Contacto. También puedes escribirnos para coordinar una visita.");
+            SetSuggestions("ubicacion");
+            return;
+        }
+
+        if (Matches(lower, "gracias", "hasta", "adiós", "chao", "bye"))
+        {
+            Bot("¡Fue un placer! Recuerda que puedes contactarnos en cualquier momento. ¡Que tengas un excelente día! 🙏");
+            SetSuggestions("inicio");
+            return;
+        }
+
+        Bot("No estoy seguro de entender tu pregunta. ¿Puedo ayudarte con información sobre nuestros servicios, horarios o agendar una consulta?");
+        SetSuggestions("inicio");
+    }
+
+    // ── Máquina de estados Lead ───────────────────────────────────
+    private async Task ProcessLeadInput(string text)
+    {
+        switch (leadStep)
+        {
+            case LeadStep.Nombre:
+                leadNombre = text;
+                leadStep = LeadStep.Email;
+                inputType = "email";
+                inputPlaceholder = "Tu correo electrónico...";
+                Bot($"Encantado, {leadNombre} 👋. ¿Cuál es tu correo electrónico? <em>(o escribe «omitir»)</em>", isHtml: true);
+                break;
+
+            case LeadStep.Email:
+                leadEmail = text.ToLowerInvariant() == "omitir" ? "" : text;
+                leadStep = LeadStep.Telefono;
+                inputType = "tel";
+                inputPlaceholder = "Tu número de teléfono...";
+                Bot("¿Y tu número de teléfono? <em>(o escribe «omitir»)</em>", isHtml: true);
+                break;
+
+            case LeadStep.Telefono:
+                leadTelefono = text.ToLowerInvariant() == "omitir" ? "" : text;
+                leadStep = LeadStep.Asunto;
+                inputType = "text";
+                inputPlaceholder = "Ej. Consulta laboral, divorcio...";
+                Bot("¿Cuál es el asunto o motivo de tu consulta?");
+                break;
+
+            case LeadStep.Asunto:
+                leadAsunto = text;
+                leadStep = LeadStep.Mensaje;
+                inputPlaceholder = "Describe brevemente tu situación...";
+                Bot("Cuéntame un poco más sobre tu situación para que el abogado pueda prepararse mejor:");
+                break;
+
+            case LeadStep.Mensaje:
+                leadMensaje = text;
+                leadStep = LeadStep.Confirmar;
+                inputPlaceholder = "Escribe tu mensaje...";
+                MostrarResumen();
+                suggestions = new List<string> { "✅ Sí, enviar", "✏️ Corregir algo" };
+                break;
+
+            case LeadStep.Confirmar:
+                if (Matches(text.ToLowerInvariant(), "sí", "si", "enviar", "confirmar", "correcto", "ok"))
+                {
+                    await GuardarLead();
+                }
+                else
+                {
+                    leadStep = LeadStep.Nombre;
+                    inputPlaceholder = "Tu nombre completo...";
+                    Bot("Sin problema, empecemos de nuevo. ¿Cuál es tu nombre completo?");
+                    suggestions = new();
+                }
+                break;
+        }
+    }
+
+    private void MostrarResumen()
+    {
+        var htmlEmail = string.IsNullOrWhiteSpace(leadEmail) ? "" : $"📧 <strong>Email:</strong> {EscHtml(leadEmail)}<br>";
+        var htmlTel = string.IsNullOrWhiteSpace(leadTelefono) ? "" : $"📱 <strong>Teléfono:</strong> {EscHtml(leadTelefono)}<br>";
+
+        var resumen =
+            "<strong>📋 Resumen de tu consulta:</strong><br>" +
+            $"👤 <strong>Nombre:</strong> {EscHtml(leadNombre)}<br>" +
+            htmlEmail +
+            htmlTel +
+            $"📌 <strong>Asunto:</strong> {EscHtml(leadAsunto)}<br>" +
+            $"💬 <strong>Mensaje:</strong> {EscHtml(leadMensaje)}<br><br>" +
+            "¿Es correcto? Te avisaré por aquí cuando hayamos registrado tu consulta.";
+
+        BotHtml(resumen);
+    }
+
+    private async Task GuardarLead()
+    {
+        leadStep = LeadStep.Guardado;
+        Bot("⏳ Registrando tu consulta...");
+        isTyping = true;
+        StateHasChanged();
+
+        await Task.Delay(800);
+        isTyping = false;
+
+        try
+        {
+            var request = new LamillaEscudero.Application.Models.Consultas.ConsultaWebCreateRequest
+            {
+                Nombre = leadNombre,
+                Email = string.IsNullOrWhiteSpace(leadEmail) ? null : leadEmail,
+                Telefono = string.IsNullOrWhiteSpace(leadTelefono) ? null : leadTelefono,
+                Asunto = leadAsunto,
+                Mensaje = leadMensaje
+            };
+
+            var result = await ConsultaService.CreateAsync(request);
+
+            if (result is not null)
+            {
+                BotHtml(
+                    "✅ <strong>¡Consulta registrada exitosamente!</strong><br>" +
+                    $"Hemos guardado tu solicitud, {EscHtml(leadNombre)}. Un miembro del equipo " +
+                    "la revisará y se pondrá en contacto contigo a la brevedad.<br><br>" +
+                    "También puedes llamarnos o visitar nuestra oficina si lo prefieres. ¡Gracias por confiar en nosotros! 🙏"
+                );
+                SetSuggestions("fin");
+                badgeCount = 0;
+            }
+            else
+            {
+                BotHtml(
+                    "❌ Hubo un problema al registrar tu consulta. Por favor intenta más tarde " +
+                    "o escríbenos directamente a través de la página de <a href='/contacto' style='color:var(--gold)'>Contacto</a>."
+                );
+                leadStep = LeadStep.None;
+                SetSuggestions("inicio");
+            }
+        }
+        catch
+        {
+            Bot("❌ Ocurrió un error. Por favor intenta desde la página de Contacto.");
+            leadStep = LeadStep.None;
+            SetSuggestions("inicio");
+        }
+
+        // Reset datos del lead
+        leadNombre = leadEmail = leadTelefono = leadAsunto = leadMensaje = string.Empty;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────
+
+    private void Bot(string text, bool isHtml = false)
+        => messages.Add(new(text, true, DateTime.Now, isHtml));
+
+    private void BotHtml(string html)
+        => messages.Add(new(html, true, DateTime.Now, IsHtml: true));
+
+    private static bool Matches(string input, params string[] keywords)
+        => keywords.Any(k => input.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+    private static string EscHtml(string? s)
+        => System.Net.WebUtility.HtmlEncode(s ?? string.Empty);
+
+    private void SetSuggestions(string context)
+    {
+        suggestions = context switch
+        {
+            "inicio" => new() { "¿Qué servicios ofrecen?", "Quiero agendar una cita", "Horarios de atención" },
+            "servicios" => new() { "Quiero agendar una consulta", "¿Cuánto cobran?", "¿Dónde están?" },
+            "horario" => new() { "Quiero agendar una cita", "¿Cuánto cobran?" },
+            "precios" => new() { "Agendar consulta gratuita", "¿Dónde están?" },
+            "ubicacion" => new() { "Agendar una cita", "Ver página de contacto" },
+            "fin" => new() { "Tengo otra pregunta", "Ver servicios" },
+            _ => new()
+        };
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await Task.CompletedTask;
+    }
+}
+
+<style>
+    /* FAB */
+    .chat-fab {
+        position: fixed;
+        bottom: 1.75rem;
+        right: 1.75rem;
+        z-index: 1050;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: none;
+        background: var(--navy,#0B1F3A);
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        box-shadow: 0 4px 20px rgba(11,31,58,.35);
+        transition: transform 150ms, box-shadow 150ms;
+    }
+
+        .chat-fab:hover {
+            transform: scale(1.08);
+            box-shadow: 0 6px 28px rgba(11,31,58,.45);
+        }
+
+    .chat-fab-pulse {
+        animation: chat-pulse 2.5s infinite;
+    }
+
+    @@keyframes chat-pulse {
+        0%,100%
+
+    {
+        box-shadow: 0 4px 20px rgba(11,31,58,.35),0 0 0 0 rgba(11,31,58,.25);
+    }
+
+    50% {
+        box-shadow: 0 4px 20px rgba(11,31,58,.35),0 0 0 10px rgba(11,31,58,0);
+    }
+
+    }
+
+    .chat-fab-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #DC2626;
+        color: #fff;
+        font-size: .65rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #fff;
+    }
+
+    /* Ventana */
+    .chat-window {
+        position: fixed;
+        bottom: 6rem;
+        right: 1.75rem;
+        z-index: 1049;
+        width: 360px;
+        max-width: calc(100vw - 2rem);
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 16px 56px rgba(11,31,58,.2);
+        display: flex;
+        flex-direction: column;
+        border: 1px solid rgba(11,31,58,.08);
+        animation: chat-slide-in 200ms ease;
+    }
+
+    @@keyframes chat-slide-in {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(16px) scale(.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    }
+
+    /* Header */
+    .chat-header {
+        background: var(--navy,#0B1F3A);
+        padding: .875rem 1rem;
+        border-radius: 16px 16px 0 0;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+
+    .chat-header-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50;
+        flex-shrink: 0;
+        background: rgba(255,255,255,.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        color: #fff;
+        border-radius: 50%;
+    }
+
+    .chat-header-info {
+        flex: 1;
+    }
+
+    .chat-header-name {
+        display: block;
+        font-size: .875rem;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .chat-header-status {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        font-size: .72rem;
+        color: rgba(255,255,255,.55);
+    }
+
+    .chat-online-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #22C55E;
+    }
+
+    .chat-close-btn {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,.6);
+        cursor: pointer;
+        padding: .25rem;
+        font-size: .875rem;
+        line-height: 1;
+    }
+
+        .chat-close-btn:hover {
+            color: #fff;
+        }
+
+    /* Mensajes */
+    .chat-messages {
+        height: 300px;
+        overflow-y: auto;
+        padding: .875rem;
+        display: flex;
+        flex-direction: column;
+        gap: .625rem;
+    }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--light-gray,#e8e6e1);
+            border-radius: 2px;
+        }
+
+    .chat-msg {
+        display: flex;
+        flex-direction: column;
+        max-width: 82%;
+    }
+
+    .chat-msg-bot {
+        align-self: flex-start;
+    }
+
+    .chat-msg-user {
+        align-self: flex-end;
+    }
+
+    .chat-bubble {
+        padding: .6rem .875rem;
+        border-radius: 12px;
+        font-size: .85rem;
+        line-height: 1.55;
+    }
+
+    .chat-msg-bot .chat-bubble {
+        background: var(--ivory,#f8f6f1);
+        color: var(--charcoal,#1c1c1e);
+        border-radius: 4px 12px 12px 12px;
+    }
+
+    .chat-msg-user .chat-bubble {
+        background: var(--navy,#0B1F3A);
+        color: #fff;
+        border-radius: 12px 4px 12px 12px;
+    }
+
+    .chat-msg-time {
+        font-size: .68rem;
+        color: var(--silver,#8a8a8e);
+        margin-top: .2rem;
+    }
+
+    .chat-msg-bot .chat-msg-time {
+        align-self: flex-start;
+    }
+
+    .chat-msg-user .chat-msg-time {
+        align-self: flex-end;
+    }
+
+    /* Typing indicator */
+    .chat-typing-indicator {
+        display: flex;
+        gap: .35rem;
+        align-items: center;
+        padding: .5rem .875rem;
+    }
+
+        .chat-typing-indicator span {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--silver,#8a8a8e);
+            animation: typing-dot 1.2s infinite;
+        }
+
+            .chat-typing-indicator span:nth-child(2) {
+                animation-delay: .2s;
+            }
+
+            .chat-typing-indicator span:nth-child(3) {
+                animation-delay: .4s;
+            }
+
+    @@keyframes typing-dot {
+        0%,60%,100%
+
+    {
+        transform: translateY(0);
+        opacity: .4;
+    }
+
+    30% {
+        transform: translateY(-5px);
+        opacity: 1;
+    }
+
+    }
+
+    /* Sugerencias */
+    .chat-suggestions {
+        padding: .5rem .875rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+        border-top: 1px solid var(--light-gray,#e8e6e1);
+    }
+
+    .chat-suggestion-btn {
+        background: var(--ivory,#f8f6f1);
+        border: 1px solid var(--light-gray,#e8e6e1);
+        border-radius: 100px;
+        padding: .3rem .75rem;
+        font-size: .78rem;
+        cursor: pointer;
+        color: var(--charcoal,#1c1c1e);
+        transition: all 130ms;
+    }
+
+        .chat-suggestion-btn:hover {
+            border-color: var(--gold,#B8963E);
+            background: #fff;
+        }
+
+    /* Input */
+    .chat-input-row {
+        display: flex;
+        gap: .5rem;
+        padding: .75rem;
+        align-items: center;
+        border-top: 1px solid var(--light-gray,#e8e6e1);
+    }
+
+    .chat-input {
+        flex: 1;
+        border: 1.5px solid var(--light-gray,#e8e6e1);
+        border-radius: 24px;
+        padding: .5rem 1rem;
+        font-size: .875rem;
+        outline: none;
+        transition: border-color 150ms;
+        font-family: inherit;
+    }
+
+        .chat-input:focus {
+            border-color: var(--gold,#B8963E);
+        }
+
+    .chat-send-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: var(--navy,#0B1F3A);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: .875rem;
+        flex-shrink: 0;
+        transition: background 150ms;
+    }
+
+        .chat-send-btn:hover {
+            background: var(--navy-mid,#142947);
+        }
+</style>

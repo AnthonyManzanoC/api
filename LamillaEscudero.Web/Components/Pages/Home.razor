@@ -1,0 +1,1837 @@
+﻿@page "/"
+@inject LamillaEscudero.Application.Abstractions.IServicioOfrecidoService ServicioService
+@inject LamillaEscudero.Application.Abstractions.IMiembroEstudioService MiembroService
+@inject LamillaEscudero.Application.Abstractions.IConfiguracionEstudioService ConfigService
+@inject Microsoft.JSInterop.IJSRuntime JS
+@rendermode InteractiveServer
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+<PageTitle>Inicio — Lamilla Escudero &amp; Asociados</PageTitle>
+
+@* ════════════════════════════════════════════════════════════════
+   OVERLAY — PERFIL COMPLETO DEL ABOGADO
+   ════════════════════════════════════════════════════════════════ *@
+@if (overlayMiembro is not null)
+{
+    <div class="bio-overlay" @onclick="CerrarOverlay">
+        <div class="bio-panel" @onclick:stopPropagation>
+            <button class="bio-close" @onclick="CerrarOverlay"><i class="bi bi-x-lg"></i></button>
+            <div class="bio-left">
+                <div class="bio-photo-wrap">
+                    @{
+                        var imgSrc = !string.IsNullOrWhiteSpace(overlayMiembro.PhotoData)
+                        ? overlayMiembro.PhotoData
+                        : !string.IsNullOrWhiteSpace(overlayMiembro.FotoUrl)
+                        ? overlayMiembro.FotoUrl : null;
+                    }
+                    @if (imgSrc is not null)
+                    {
+                        <img src="@imgSrc" alt="@overlayMiembro.Nombres" class="bio-photo" />
+                    }
+                    else
+                    {
+
+                        <div class="bio-initials">@GetInitials(overlayMiembro.Nombres)</div>
+                    }
+                    <div class="bio-photo-ring"></div>
+                </div>
+                <h2 class="bio-name">@overlayMiembro.Nombres</h2>
+                <p class="bio-cargo">@overlayMiembro.Cargo</p>
+                @if (!string.IsNullOrWhiteSpace(overlayMiembro.FraseDestacada))
+                {
+                    <blockquote class="bio-frase">
+                        <i class="bi bi-quote bio-quote-icon"></i>@overlayMiembro.FraseDestacada
+                    </blockquote>
+                }
+                <div class="bio-contact-links">
+                    @if (!string.IsNullOrWhiteSpace(overlayMiembro.Email))
+                    {
+                        <a href="mailto:@overlayMiembro.Email" class="bio-contact-link">
+                            <i class="bi bi-envelope-fill"></i><span>@overlayMiembro.Email</span>
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(overlayMiembro.LinkedIn))
+                    {
+                        <a href="@overlayMiembro.LinkedIn" target="_blank" class="bio-contact-link bio-linkedin">
+                            <i class="bi bi-linkedin"></i><span>LinkedIn</span>
+                        </a>
+                    }
+                </div>
+            </div>
+            <div class="bio-right">
+                <div class="bio-tabs">
+                    <button class="bio-tab @(bioTab == "bio" ? "active" : "")" @onclick='() => bioTab = "bio"'>
+                        <i class="bi bi-person-lines-fill me-1"></i>Biografía
+                    </button>
+                    @if (overlayTimeline.Any())
+                    {
+                        <button class="bio-tab @(bioTab == "exp" ? "active" : "")" @onclick='() => bioTab = "exp"'>
+                            <i class="bi bi-briefcase-fill me-1"></i>Trayectoria
+                        </button>
+                    }
+                    @if (overlayEducacion.Any())
+                    {
+                        <button class="bio-tab @(bioTab == "edu" ? "active" : "")" @onclick='() => bioTab = "edu"'>
+                            <i class="bi bi-mortarboard-fill me-1"></i>Formación
+                        </button>
+                    }
+                </div>
+                @if (bioTab == "bio")
+                {
+                    <div class="bio-content-section">
+                        @if (!string.IsNullOrWhiteSpace(overlayMiembro.BiografiaLarga))
+                        {
+                            <p class="bio-text">@overlayMiembro.BiografiaLarga</p>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(overlayMiembro.BiografiaCompleta))
+                        {
+
+                            <p class="bio-text">@overlayMiembro.BiografiaCompleta</p>
+                        }
+                        else
+                        {
+
+                            <p class="bio-text bio-text-empty">Perfil en preparación.</p>
+                        }
+                    </div>
+                }
+                @if (bioTab == "exp")
+                {
+                    <div class="bio-timeline">
+                        @foreach (var item in overlayTimeline)
+                        {
+                            <div class="bio-tl-item">
+                                <div class="bio-tl-dot"></div>
+                                <div class="bio-tl-year">@item.Anio</div>
+                                <div class="bio-tl-body">
+                                    <p class="bio-tl-titulo">@item.Titulo</p>
+                                    @if (!string.IsNullOrWhiteSpace(item.Descripcion))
+                                    {
+                                        <p class="bio-tl-desc">@item.Descripcion</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                @if (bioTab == "edu")
+                {
+                    <div class="bio-educacion">
+                        @foreach (var item in overlayEducacion)
+                        {
+                            <div class="bio-edu-item">
+                                <div class="bio-edu-icon"><i class="bi bi-award-fill"></i></div>
+                                <div class="bio-edu-body">
+                                    <p class="bio-edu-titulo">@item.Titulo</p>
+                                    @if (!string.IsNullOrWhiteSpace(item.Institucion))
+                                    {
+                                        <p class="bio-edu-inst">@item.Institucion</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.Anio))
+                                    {
+                                        <p class="bio-edu-anio">@item.Anio</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@* ════════════════════════════════════════════════════════════════
+   HERO — patrón flotante + badge pulso + scroll indicator
+   ════════════════════════════════════════════════════════════════ *@
+<section class="hero-section hero-v2" id="inicio">
+    <div class="hero-geo-pattern" aria-hidden="true"></div>
+    <div class="hero-bg-pattern"></div>
+    <div class="container" style="position:relative;z-index:2;">
+        <div class="hero-inner">
+            <div class="hero-copy">
+                @if (config is not null && (!string.IsNullOrWhiteSpace(config.PhotoUrl) || !string.IsNullOrWhiteSpace(config.LogoUrl)))
+                {
+                    <div class="home-brand-logo animate-fade-in">
+                        <img src="@(!string.IsNullOrWhiteSpace(config.PhotoUrl) ? config.PhotoUrl : config.LogoUrl)"
+                             alt="@config.NombreEstudio" />
+                    </div>
+                }
+                <div class="hero-pulse-badge">
+                    <i class="bi bi-geo-alt-fill me-1"></i>Babahoyo · Los Ríos · Ecuador
+                </div>
+                <div class="hero-eyebrow-wrap">
+                    <span class="hero-eyebrow-line"></span>
+                    <p class="hero-eyebrow">Estudio Jurídico de excelencia</p>
+                </div>
+                <h1 class="hero-title">
+                    Solidez jurídica,<br /><em>trato humano.</em>
+                </h1>
+                <p class="hero-subtitle">
+                    Más de una década acompañando a nuestros clientes en las decisiones legales
+                    más importantes de sus vidas. Estrategia clara, resultados concretos.
+                </p>
+                <div class="hero-actions">
+                    <a href="/contacto" class="btn-hero-primary">
+                        <span class="btn-hero-glow"></span>
+                        <i class="bi bi-chat-text me-2"></i>Consulta gratuita
+                    </a>
+                    <a href="/servicios" class="btn-hero-secondary">
+                        <i class="bi bi-grid me-2"></i>Nuestros servicios
+                    </a>
+                </div>
+                <div class="hero-stats-bar">
+                    <div class="hero-stat"><strong>+15</strong><span>Años</span></div>
+                    <div class="hero-stat-div"></div>
+                    <div class="hero-stat"><strong>+500</strong><span>Casos</span></div>
+                    <div class="hero-stat-div"></div>
+                    <div class="hero-stat"><strong>100%</strong><span>Compromiso</span></div>
+                </div>
+            </div>
+            <div class="hero-contact-card">
+                <div class="hcc-accent"></div>
+                <div class="hcc-header">
+                    <span class="hcc-tag"><i class="bi bi-telephone-inbound me-1"></i>Contacto directo</span>
+                </div>
+                <div class="hcc-items">
+                    @if (config is not null)
+                    {
+                        @if (!string.IsNullOrWhiteSpace(config.TelefonoContacto))
+                        {
+                            <div class="hcc-item">
+                                <div class="hcc-item-icon"><i class="bi bi-telephone-fill"></i></div>
+                                <span>@config.TelefonoContacto</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(config.EmailContacto))
+                        {
+                            <div class="hcc-item">
+                                <div class="hcc-item-icon"><i class="bi bi-envelope-fill"></i></div>
+                                <span>@config.EmailContacto</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(config.Direccion))
+                        {
+                            <div class="hcc-item">
+                                <div class="hcc-item-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                                <span>@config.Direccion</span>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="hcc-item">
+                            <div class="hcc-item-icon"><i class="bi bi-hourglass"></i></div>
+                            <span>Cargando...</span>
+                        </div>
+                    }
+                </div>
+                <div class="hcc-free-badge">
+                    <i class="bi bi-check-circle-fill me-1"></i>Primera consulta sin costo
+                </div>
+                <a href="/contacto" class="hcc-cta">
+                    <i class="bi bi-send me-2"></i>Enviar consulta
+                </a>
+            </div>
+        </div>
+    </div>
+    <a href="#servicios" class="hero-scroll-indicator" aria-label="Ir a servicios">
+        <i class="bi bi-chevron-down"></i>
+    </a>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   ÁREAS DE PRÁCTICA
+   ════════════════════════════════════════════════════════════════ *@
+<section class="practice-section practice-v2" id="servicios">
+    <div class="container">
+        <div class="section-header reveal">
+            <span class="section-eyebrow">Especialidades</span>
+            <h2 class="section-title">Áreas de práctica</h2>
+            <div class="section-title-line"></div>
+        </div>
+        @if (servicios is null)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border" style="color:var(--gold);width:1.5rem;height:1.5rem;"></div>
+            </div>
+        }
+        else if (!servicios.Any())
+        {
+            <div class="practice-grid practice-grid-v2">
+                @foreach (var s in staticServices)
+                {
+                    <div class="practice-card @(s.Featured ? "practice-card-featured" : "") practice-card-v2 reveal">
+                        <div class="practice-card-inner">
+                            <div class="practice-icon-wrap">
+                                <i class="bi @s.Icono practice-icon"></i>
+                            </div>
+                            <h3 class="practice-name">@s.Titulo</h3>
+                            <p class="practice-desc">@s.Desc</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="practice-grid practice-grid-v2">
+                @foreach (var (s, idx) in servicios.Select((x, i) => (x, i)))
+                {
+                    var isOpen = openServiceId == s.Id;
+                    <div class="practice-card @(idx == 1 ? "practice-card-featured" : "") practice-card-interactive practice-card-v2 reveal"
+                         @onclick="() => ToggleServicio(s.Id)">
+                        <div class="practice-card-inner">
+                            <div class="practice-icon-wrap">
+                                <i class="bi @(s.Icono ?? "bi-briefcase") practice-icon"></i>
+                            </div>
+                            <h3 class="practice-name">@s.Titulo</h3>
+                            <p class="practice-desc">@s.DescripcionCorta</p>
+                            @if (!string.IsNullOrWhiteSpace(s.Detalles))
+                            {
+                                <div class="practice-expand @(isOpen ? "open" : "")">
+                                    <div class="practice-expand-body">@s.Detalles</div>
+                                </div>
+                                <span class="practice-toggle">
+                                    <i class="bi @(isOpen ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        <div class="text-center mt-5 reveal">
+            <a href="/servicios" class="btn-outline-hero btn-outline-hero-v2">
+                <i class="bi bi-arrow-right me-2"></i>Ver todos los servicios
+            </a>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   ¿POR QUÉ ELEGIRNOS?  — nueva sección
+   ════════════════════════════════════════════════════════════════ *@
+<section class="why-section">
+    <div class="container">
+        <div class="section-header reveal">
+            <span class="section-eyebrow">Ventajas competitivas</span>
+            <h2 class="section-title">¿Por qué elegir nuestro estudio?</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <div class="why-grid">
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">01</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-shield-fill-check"></i></div>
+                    <h3 class="why-feature-title">Excelencia Técnica</h3>
+                    <p class="why-feature-desc">Capacidad jurídica comprobada con formación continua y especialización en múltiples ramas del derecho ecuatoriano.</p>
+                </div>
+            </div>
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">02</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-person-check-fill"></i></div>
+                    <h3 class="why-feature-title">Atención Personalizada</h3>
+                    <p class="why-feature-desc">Cada caso recibe análisis individualizado y estrategias diseñadas específicamente para las necesidades de cada cliente.</p>
+                </div>
+            </div>
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">03</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                    <h3 class="why-feature-title">Raíces Locales</h3>
+                    <p class="why-feature-desc">Profundo conocimiento del contexto jurídico de Babahoyo y la región de Los Ríos para soluciones contextualizadas.</p>
+                </div>
+            </div>
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">04</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <h3 class="why-feature-title">Resultados Comprobados</h3>
+                    <p class="why-feature-desc">Trayectoria de éxito en litigios, negociaciones y asesoramiento preventivo que respaldo nuestra reputación.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   TRAYECTORIA / QUIÉNES SOMOS
+   ════════════════════════════════════════════════════════════════ *@
+<section class="trayectoria-section trayectoria-v2" id="nosotros">
+    <div class="trayectoria-bg-lines"></div>
+    <div class="container">
+        <div class="trayectoria-inner">
+            <div class="trayectoria-copy reveal">
+                <span class="section-eyebrow">Nuestra historia</span>
+                <h2 class="section-title" style="color:white;">Quiénes somos</h2>
+                <div class="tray-divider-gold"></div>
+                <p class="trayectoria-text">
+                    Fundado con la convicción de que el derecho debe ser accesible y humano,
+                    nuestro estudio ha acompañado a familias, empresas e individuos en los momentos
+                    legales más importantes de sus vidas.
+                </p>
+                <p class="trayectoria-text">
+                    Combinamos rigor técnico con atención personalizada. Cada causa merece
+                    una estrategia propia y un equipo comprometido con la justicia.
+                </p>
+                <a href="/contacto" class="btn-primary-gold mt-4 d-inline-flex">
+                    <i class="bi bi-handshake me-2"></i>Trabajemos juntos
+                </a>
+            </div>
+            <div class="trayectoria-stats trayectoria-stats-v2 reveal">
+                <div class="stat-item stat-item-v3">
+                    <div class="stat-item-line"></div>
+                    <span class="stat-num">+15</span>
+                    <span class="stat-label">Años de experiencia</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item stat-item-v3">
+                    <div class="stat-item-line"></div>
+                    <span class="stat-num">+500</span>
+                    <span class="stat-label">Causas atendidas</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item stat-item-v3">
+                    <div class="stat-item-line"></div>
+                    <span class="stat-num">98%</span>
+                    <span class="stat-label">Clientes satisfechos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   EQUIPO
+   ════════════════════════════════════════════════════════════════ *@
+@if (miembros is not null && miembros.Any())
+{
+    <section class="team-section team-v2">
+        <div class="container">
+            <div class="section-header reveal">
+                <span class="section-eyebrow">Las personas detrás del estudio</span>
+                <h2 class="section-title">Nuestro equipo</h2>
+                <div class="section-title-line"></div>
+                <p class="section-subtitle">Abogados comprometidos, especializados y con vocación de servicio.</p>
+            </div>
+            <div class="team-grid team-grid-v2">
+                @foreach (var m in miembros)
+                {
+                    var isExpanded = expandedMiembroId == m.Id;
+                    var tImgSrc = !string.IsNullOrWhiteSpace(m.PhotoData) ? m.PhotoData
+                    : !string.IsNullOrWhiteSpace(m.FotoUrl) ? m.FotoUrl : null;
+                    <div class="team-card team-card-v2 @(isExpanded ? "team-card-expanded" : "") reveal"
+                         @onclick="() => ToggleMiembro(m.Id)">
+                        <div class="team-avatar team-avatar-v2">
+                            @if (tImgSrc is not null)
+                            {
+                                <img src="@tImgSrc" alt="@m.Nombres" class="team-photo" />
+                            }
+                            else
+                            {
+
+                                <div class="team-initials">@GetInitials(m.Nombres)</div>
+                            }
+                            <div class="team-avatar-ring"></div>
+                        </div>
+                        <h3 class="team-name">@m.Nombres</h3>
+                        <p class="team-cargo">@m.Cargo</p>
+                        @if (!string.IsNullOrWhiteSpace(m.BiografiaBreve))
+                        {
+                            <p class="team-bio-breve">@m.BiografiaBreve</p>
+                        }
+                        @if (isExpanded)
+                        {
+                            <div class="team-bio-full team-bio-full-v2">
+                                <div class="team-bio-divider"></div>
+                                @if (!string.IsNullOrWhiteSpace(m.FraseDestacada))
+                                {
+                                    <p class="team-bio-frase">
+                                        <i class="bi bi-quote me-1" style="color:var(--gold);"></i>@m.FraseDestacada
+                                    </p>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(m.BiografiaCompleta))
+                                {
+                                    <p class="team-bio-text">@m.BiografiaCompleta</p>
+                                }
+                                <div class="team-bio-actions">
+                                    @if (!string.IsNullOrWhiteSpace(m.LinkedIn))
+                                    {
+                                        <a href="@m.LinkedIn" target="_blank" class="team-linkedin" @onclick:stopPropagation>
+                                            <i class="bi bi-linkedin me-1"></i>LinkedIn
+                                        </a>
+                                    }
+                                    <button class="team-btn-overlay" @onclick="() => AbrirOverlay(m)" @onclick:stopPropagation>
+                                        <i class="bi bi-person-badge me-1"></i>Ver perfil completo
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        <span class="team-expand-hint">
+                            <i class="bi @(isExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@* ════════════════════════════════════════════════════════════════
+   VALORES
+   ════════════════════════════════════════════════════════════════ *@
+<section class="values-section values-v2">
+    <div class="container">
+        <div class="values-inner">
+            <div class="value-item value-item-v2 reveal">
+                <div class="value-icon-wrap"><i class="bi bi-eye"></i></div>
+                <span class="value-num">01</span>
+                <h3 class="value-title">Transparencia</h3>
+                <p class="value-desc">Comunicación clara y honesta en cada etapa del proceso legal.</p>
+            </div>
+            <div class="value-divider"></div>
+            <div class="value-item value-item-v2 reveal">
+                <div class="value-icon-wrap"><i class="bi bi-shield-star"></i></div>
+                <span class="value-num">02</span>
+                <h3 class="value-title">Excelencia</h3>
+                <p class="value-desc">Preparación rigurosa y estrategia fundada en el derecho vigente.</p>
+            </div>
+            <div class="value-divider"></div>
+            <div class="value-item value-item-v2 reveal">
+                <div class="value-icon-wrap"><i class="bi bi-heart-fill"></i></div>
+                <span class="value-num">03</span>
+                <h3 class="value-title">Compromiso</h3>
+                <p class="value-desc">Tu causa es nuestra causa. Atención personalizada, siempre.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   CTA FINAL
+   ════════════════════════════════════════════════════════════════ *@
+<section class="cta-final-section cta-final-v2">
+    <div class="cta-bg-shape"></div>
+    <div class="container">
+        <div class="cta-final-inner reveal">
+            <span class="cta-eyebrow">¿Necesitas asesoramiento legal?</span>
+            <h2 class="cta-final-title">Primera consulta sin costo</h2>
+            <p class="cta-final-sub">Cuéntanos tu situación y te orientaremos con honestidad y precisión.</p>
+            <div class="cta-actions">
+                <a href="/contacto" class="btn-cta-final">
+                    <i class="bi bi-send-fill me-2"></i>Solicitar consulta gratuita
+                </a>
+                <a href="/contacto" class="btn-cta-secondary">
+                    <i class="bi bi-telephone-fill me-2"></i>Llamar ahora
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   ESTILOS FUSIÓN
+   ════════════════════════════════════════════════════════════════ *@
+<style>
+
+    /* ══ SCROLL REVEAL (IntersectionObserver) ════════════════════════ */
+    .reveal {
+        opacity: 0;
+        transform: translateY(38px);
+        transition: opacity .72s ease, transform .72s ease;
+    }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+    /* ══ HERO ════════════════════════════════════════════════════════ */
+    .hero-v2 {
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Patrón geométrico flotante (del modelo HTML) */
+    .hero-geo-pattern {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='70' height='70' viewBox='0 0 70 70' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M35 2L68 35L35 68L2 35Z' fill='none' stroke='%23B8963E' stroke-opacity='0.045' stroke-width='1'/%3E%3C/svg%3E");
+        animation: geoFloat 28s infinite linear;
+    }
+
+    @@keyframes geoFloat {
+        0% {
+            transform: translateY(0) rotate(0deg);
+        }
+
+        100% {
+            transform: translateY(-70px) rotate(360deg);
+        }
+    }
+
+    .hero-bg-pattern {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        background-image: radial-gradient(circle at 80% 20%, rgba(184,150,62,.07) 0%, transparent 50%), radial-gradient(circle at 15% 75%, rgba(11,31,58,.06) 0%, transparent 50%);
+    }
+
+    /* Badge pulso — ubicación (del modelo HTML) */
+    .hero-pulse-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        background: rgba(184,150,62,.1);
+        border: 1px solid var(--gold);
+        padding: .5rem 1.25rem;
+        border-radius: 50px;
+        color: var(--gold);
+        font-size: .8rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        animation: pulseBadge 2.8s infinite;
+    }
+
+    @@keyframes pulseBadge {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(184,150,62,.35);
+        }
+
+        50% {
+            box-shadow: 0 0 0 13px rgba(184,150,62,0);
+        }
+    }
+
+    .hero-eyebrow-wrap {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .hero-eyebrow-line {
+        width: 36px;
+        height: 2px;
+        background: var(--gold);
+        flex-shrink: 0;
+    }
+
+    .hero-eyebrow {
+        margin: 0;
+    }
+
+    .hero-title em {
+        font-style: italic;
+        background: linear-gradient(120deg, var(--navy), var(--gold));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .hero-stats-bar {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--light-gray);
+    }
+
+    .hero-stat {
+        display: flex;
+        flex-direction: column;
+    }
+
+        .hero-stat strong {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .hero-stat span {
+            font-size: .72rem;
+            color: var(--silver);
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+    .hero-stat-div {
+        width: 1px;
+        height: 28px;
+        background: var(--light-gray);
+    }
+
+    .btn-hero-primary {
+        position: relative;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        padding: .85rem 1.75rem;
+        border-radius: var(--radius-md);
+        font-size: .9rem;
+        font-weight: 500;
+        transition: transform 100ms, box-shadow var(--transition);
+        box-shadow: 0 4px 18px rgba(11,31,58,.28);
+    }
+
+        .btn-hero-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 28px rgba(11,31,58,.35);
+            color: white;
+        }
+
+    .btn-hero-glow {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, transparent 30%, rgba(184,150,62,.22));
+        opacity: 0;
+        transition: opacity var(--transition);
+    }
+
+    .btn-hero-primary:hover .btn-hero-glow {
+        opacity: 1;
+    }
+
+    .btn-hero-secondary {
+        display: inline-flex;
+        align-items: center;
+        color: var(--navy);
+        border: 1.5px solid var(--light-gray);
+        padding: .85rem 1.75rem;
+        border-radius: var(--radius-md);
+        font-size: .9rem;
+        font-weight: 500;
+        transition: all var(--transition);
+    }
+
+        .btn-hero-secondary:hover {
+            border-color: var(--navy);
+            background: var(--cream);
+            color: var(--navy);
+        }
+
+    /* Contact card */
+    .hcc-accent {
+        height: 3px;
+        background: linear-gradient(90deg, var(--gold), var(--gold-light));
+        margin: -1.75rem -1.75rem 1.5rem;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    }
+
+    .hcc-item-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--gold-pale);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: var(--gold);
+        font-size: .82rem;
+        transition: background var(--transition);
+    }
+
+    .hcc-item {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        font-size: .875rem;
+        color: var(--charcoal);
+        padding: .6rem .5rem;
+        border-left: 2px solid transparent;
+        transition: all var(--transition);
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+        /* translateX al hover (del modelo HTML) */
+        .hcc-item:hover {
+            border-left-color: var(--gold);
+            background: rgba(184,150,62,.05);
+            transform: translateX(5px);
+        }
+
+            .hcc-item:hover .hcc-item-icon {
+                background: var(--gold);
+                color: white;
+            }
+
+    .hcc-free-badge {
+        display: flex;
+        align-items: center;
+        background: rgba(22,163,74,.08);
+        border: 1px solid rgba(22,163,74,.22);
+        color: #166534;
+        border-radius: var(--radius-sm);
+        padding: .5rem .875rem;
+        font-size: .78rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    /* Scroll indicator bouncing (del modelo HTML) */
+    .hero-scroll-indicator {
+        position: absolute;
+        bottom: 1.75rem;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--gold);
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border: 1.5px solid rgba(184,150,62,.45);
+        border-radius: 50%;
+        background: rgba(184,150,62,.07);
+        backdrop-filter: blur(4px);
+        transition: all var(--transition);
+        animation: scrollBounce 2.4s infinite;
+        text-decoration: none;
+        z-index: 10;
+    }
+
+        .hero-scroll-indicator:hover {
+            background: var(--gold);
+            color: white;
+            border-color: var(--gold);
+            animation-play-state: paused;
+        }
+
+    @@keyframes scrollBounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        40% {
+            transform: translateX(-50%) translateY(-10px);
+        }
+
+        60% {
+            transform: translateX(-50%) translateY(-5px);
+        }
+    }
+
+    /* ══ PRACTICE V2 ════════════════════════════════════════════════ */
+    .section-title-line {
+        width: 48px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--gold), var(--gold-light));
+        border-radius: 2px;
+        margin: 1rem auto 0;
+    }
+
+    .practice-card-v2 {
+        position: relative;
+        overflow: hidden;
+    }
+        /* Shimmer sweep (del modelo HTML) */
+        .practice-card-v2::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(184,150,62,.09), transparent);
+            transition: left .55s ease;
+            z-index: 0;
+        }
+
+        .practice-card-v2:hover::before {
+            left: 100%;
+        }
+        /* Top border gold */
+        .practice-card-v2::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0;
+            transition: opacity var(--transition);
+            z-index: 1;
+        }
+
+        .practice-card-v2:hover::after {
+            opacity: 1;
+        }
+
+        .practice-card-v2 .practice-card-inner {
+            position: relative;
+            z-index: 1;
+        }
+
+    .practice-icon-wrap {
+        width: 54px;
+        height: 54px;
+        border-radius: var(--radius-md);
+        background: linear-gradient(135deg, rgba(11,31,58,.05), rgba(184,150,62,.12));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.25rem;
+        transition: background var(--transition), transform var(--transition);
+    }
+
+    .practice-card-v2:hover .practice-icon-wrap {
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        transform: scale(1.08);
+    }
+
+    .practice-card-v2:hover .practice-icon {
+        color: var(--gold-light);
+    }
+
+    .practice-card-featured .practice-icon-wrap {
+        background: rgba(184,150,62,.15);
+    }
+
+    .btn-outline-hero-v2 {
+        border: 1.5px solid var(--navy) !important;
+        transition: all var(--transition);
+    }
+
+        .btn-outline-hero-v2:hover {
+            background: var(--navy) !important;
+            color: white !important;
+        }
+
+    /* ══ WHY SECTION ════════════════════════════════════════════════ */
+    .why-section {
+        padding: 6rem 0;
+        background: var(--white);
+    }
+
+    .why-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 2rem;
+        margin-top: 3.5rem;
+    }
+
+    .why-feature {
+        text-align: center;
+        padding: 2.5rem 1.5rem 2rem;
+        border-radius: var(--radius-lg);
+        background: var(--ivory);
+        border: 1.5px solid var(--light-gray);
+        position: relative;
+        overflow: hidden;
+        transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+        cursor: default;
+    }
+
+        .why-feature:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--gold);
+        }
+    /* Número de fondo grande (del modelo HTML) */
+    .why-feature-bg-num {
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: var(--font-display);
+        font-size: 5.5rem;
+        font-weight: 700;
+        color: var(--gold);
+        opacity: .08;
+        line-height: 1;
+        user-select: none;
+        transition: opacity var(--transition);
+    }
+
+    .why-feature:hover .why-feature-bg-num {
+        opacity: .14;
+    }
+
+    .why-feature-body {
+        position: relative;
+        z-index: 1;
+        margin-top: 1.5rem;
+    }
+
+    .why-feature-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        color: var(--gold-light);
+        font-size: 1.15rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.25rem;
+        transition: transform var(--transition), background var(--transition);
+    }
+
+    .why-feature:hover .why-feature-icon {
+        transform: scale(1.12) rotate(-5deg);
+        background: linear-gradient(135deg, var(--gold), var(--gold-light));
+        color: white;
+    }
+
+    .why-feature-title {
+        font-family: var(--font-display);
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--navy);
+        margin: 0 0 .75rem;
+    }
+
+    .why-feature-desc {
+        font-size: .875rem;
+        color: var(--silver);
+        line-height: 1.7;
+        margin: 0;
+    }
+
+    /* ══ TRAYECTORIA V2 ═════════════════════════════════════════════ */
+    .trayectoria-v2 {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .trayectoria-bg-lines {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: repeating-linear-gradient( 0deg, transparent, transparent 48px, rgba(255,255,255,.015) 48px, rgba(255,255,255,.015) 49px );
+    }
+
+    .tray-divider-gold {
+        width: 40px;
+        height: 2px;
+        background: var(--gold);
+        margin: 1.25rem 0;
+    }
+
+    .trayectoria-stats-v2 {
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: var(--radius-xl);
+    }
+    /* Stats con línea indicadora (mejorado) */
+    .stat-item-v3 {
+        text-align: center;
+        position: relative;
+        transition: transform var(--transition);
+    }
+
+        .stat-item-v3:hover {
+            transform: translateY(-5px);
+        }
+
+    .stat-item-line {
+        width: 2px;
+        height: 30px;
+        background: var(--gold);
+        opacity: .5;
+        margin: 0 auto .75rem;
+        border-radius: 1px;
+    }
+
+    /* ══ TEAM V2 ════════════════════════════════════════════════════ */
+    .team-v2 {
+        background: var(--ivory);
+    }
+
+    .team-card-v2 {
+        background: var(--white);
+        position: relative;
+        overflow: hidden;
+        transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    }
+
+        .team-card-v2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 320ms ease;
+        }
+
+        .team-card-v2:hover::after, .team-card-expanded::after {
+            transform: scaleX(1);
+        }
+
+        .team-card-v2:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+    .team-avatar-v2 {
+        position: relative;
+        display: inline-block;
+        margin: 0 auto 1.25rem;
+    }
+
+    .team-avatar-ring {
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        background: linear-gradient(135deg, var(--gold), var(--gold-light)) border-box;
+        -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: destination-out;
+        mask-composite: exclude;
+        opacity: 0;
+        transition: opacity var(--transition);
+    }
+
+    .team-card-v2:hover .team-avatar-ring, .team-card-expanded .team-avatar-ring {
+        opacity: 1;
+    }
+
+    .team-bio-full-v2 {
+        margin-top: .75rem;
+    }
+
+    .team-bio-frase {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: .95rem;
+        color: var(--charcoal);
+        margin: .5rem 0 .75rem;
+    }
+
+    .team-bio-text {
+        font-size: .875rem;
+        color: var(--silver);
+        line-height: 1.7;
+    }
+
+    .team-bio-actions {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+
+    .team-btn-overlay {
+        display: inline-flex;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: .4rem .875rem;
+        font-size: .78rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background var(--transition);
+    }
+
+        .team-btn-overlay:hover {
+            background: var(--gold);
+        }
+
+    /* ══ VALUES V2 ══════════════════════════════════════════════════ */
+    .value-item-v2 {
+        transition: transform var(--transition);
+    }
+
+        .value-item-v2:hover {
+            transform: translateY(-4px);
+        }
+
+    .value-icon-wrap {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(184,150,62,.15);
+        color: var(--gold);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        margin: 0 auto 1rem;
+        transition: background var(--transition), transform var(--transition);
+    }
+
+    .value-item-v2:hover .value-icon-wrap {
+        background: var(--gold);
+        color: white;
+        transform: scale(1.12);
+    }
+
+    /* ══ CTA FINAL V2 ═══════════════════════════════════════════════ */
+    .cta-final-v2 {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cta-bg-shape {
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 320px;
+        height: 320px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(184,150,62,.14), transparent 70%);
+        pointer-events: none;
+    }
+
+    .cta-eyebrow {
+        display: block;
+        font-size: .75rem;
+        font-weight: 600;
+        letter-spacing: .15em;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin-bottom: .75rem;
+    }
+
+    .cta-final-title {
+        font-family: var(--font-display);
+        font-size: 2.75rem;
+        font-weight: 600;
+        color: var(--navy);
+        margin-bottom: .75rem;
+    }
+
+    .cta-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-cta-final {
+        display: inline-flex;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        padding: .9rem 2.25rem;
+        border-radius: var(--radius-md);
+        font-size: .95rem;
+        font-weight: 500;
+        transition: transform 100ms, box-shadow var(--transition);
+        box-shadow: 0 4px 16px rgba(11,31,58,.2);
+    }
+
+        .btn-cta-final:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 28px rgba(11,31,58,.3);
+            color: white;
+        }
+
+    .btn-cta-secondary {
+        display: inline-flex;
+        align-items: center;
+        background: transparent;
+        color: var(--navy);
+        border: 1.5px solid var(--navy);
+        padding: .9rem 2rem;
+        border-radius: var(--radius-md);
+        font-size: .95rem;
+        font-weight: 500;
+        transition: all var(--transition);
+    }
+
+        .btn-cta-secondary:hover {
+            background: var(--navy);
+            color: white;
+        }
+
+    /* ══ LOGO HERO ══════════════════════════════════════════════════ */
+    .home-brand-logo {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        padding: .75rem 1.25rem;
+        background: var(--white);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(11,31,58,.08);
+        border: 1px solid rgba(184,150,62,.15);
+    }
+
+        .home-brand-logo img {
+            max-height: 90px;
+            max-width: 100%;
+            object-fit: contain;
+        }
+
+    .animate-fade-in {
+        animation: fadeInLogo .8s ease-out;
+    }
+
+    @@keyframes fadeInLogo {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ══ BIO OVERLAY ════════════════════════════════════════════════ */
+    .bio-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9900;
+        background: rgba(7,22,41,.78);
+        backdrop-filter: blur(12px) saturate(1.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        animation: overlayFadeIn 240ms ease;
+    }
+
+    @@keyframes overlayFadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .bio-panel {
+        position: relative;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        width: 100%;
+        max-width: 900px;
+        max-height: 88vh;
+        background: var(--white);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: 0 32px 80px rgba(11,31,58,.4);
+        animation: panelSlideUp 280ms cubic-bezier(.4,0,.2,1);
+    }
+
+    @@keyframes panelSlideUp {
+        from {
+            opacity: 0;
+            transform: translateY(24px) scale(.97);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .bio-close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 36px;
+        height: 36px;
+        z-index: 10;
+        border: none;
+        background: rgba(255,255,255,.15);
+        backdrop-filter: blur(8px);
+        border-radius: 50%;
+        color: var(--white);
+        font-size: .9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition);
+    }
+
+        .bio-close:hover {
+            background: rgba(255,255,255,.3);
+        }
+
+    .bio-left {
+        background: linear-gradient(160deg, var(--navy-deep) 0%, var(--navy-mid) 100%);
+        padding: 2.5rem 1.75rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        overflow-y: auto;
+    }
+
+        .bio-left::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .bio-left::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,.1);
+        }
+
+    .bio-photo-wrap {
+        position: relative;
+        margin-bottom: 1.5rem;
+        display: inline-block;
+    }
+
+    .bio-photo {
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--gold);
+        box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    }
+
+    .bio-initials {
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(184,150,62,.25), rgba(184,150,62,.1));
+        border: 3px solid var(--gold);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-size: 2.8rem;
+        font-weight: 700;
+        color: var(--gold-light);
+    }
+
+    .bio-photo-ring {
+        position: absolute;
+        inset: -6px;
+        border-radius: 50%;
+        border: 2px solid rgba(184,150,62,.35);
+        animation: ringPulse 3s infinite;
+    }
+
+    @@keyframes ringPulse {
+        0%, 100% {
+            transform: scale(1);
+            opacity: .6;
+        }
+
+        50% {
+            transform: scale(1.05);
+            opacity: .3;
+        }
+    }
+
+    .bio-name {
+        font-family: var(--font-display);
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: var(--white);
+        margin: 0 0 .35rem;
+    }
+
+    .bio-cargo {
+        font-size: .78rem;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: var(--gold-light);
+        margin: 0 0 1.25rem;
+    }
+
+    .bio-frase {
+        font-family: var(--font-display);
+        font-style: italic;
+        font-size: .95rem;
+        color: rgba(255,255,255,.7);
+        margin: 0 0 1.5rem;
+        padding: 0;
+        line-height: 1.65;
+    }
+
+    .bio-quote-icon {
+        color: var(--gold);
+        opacity: .5;
+        margin-right: .25rem;
+    }
+
+    .bio-contact-links {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        width: 100%;
+    }
+
+    .bio-contact-link {
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+        font-size: .8rem;
+        color: rgba(255,255,255,.6);
+        padding: .5rem .75rem;
+        border-radius: var(--radius-sm);
+        background: rgba(255,255,255,.05);
+        transition: all var(--transition);
+    }
+
+        .bio-contact-link:hover {
+            background: rgba(255,255,255,.1);
+            color: var(--white);
+        }
+
+    .bio-linkedin {
+        color: #7ab8d8 !important;
+    }
+
+        .bio-linkedin:hover {
+            background: rgba(0,119,181,.15) !important;
+        }
+
+    .bio-right {
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        background: var(--white);
+    }
+
+        .bio-right::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .bio-right::-webkit-scrollbar-thumb {
+            background: var(--light-gray);
+        }
+
+    .bio-tabs {
+        display: flex;
+        border-bottom: 2px solid var(--light-gray);
+        background: var(--ivory);
+        flex-shrink: 0;
+        padding: 0 1.5rem;
+    }
+
+    .bio-tab {
+        padding: 1rem .875rem;
+        font-size: .82rem;
+        font-weight: 500;
+        border: none;
+        background: none;
+        cursor: pointer;
+        color: var(--silver);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all var(--transition);
+        display: flex;
+        align-items: center;
+    }
+
+        .bio-tab:hover {
+            color: var(--navy);
+        }
+
+        .bio-tab.active {
+            color: var(--navy);
+            border-bottom-color: var(--gold);
+            font-weight: 600;
+        }
+
+    .bio-content-section {
+        padding: 2rem 1.75rem;
+        flex: 1;
+    }
+
+    .bio-text {
+        font-size: .95rem;
+        color: var(--charcoal);
+        line-height: 1.8;
+        white-space: pre-wrap;
+    }
+
+    .bio-text-empty {
+        color: var(--silver);
+        font-style: italic;
+    }
+
+    .bio-timeline {
+        padding: 1.75rem;
+    }
+
+    .bio-tl-item {
+        display: grid;
+        grid-template-columns: 52px 12px 1fr;
+        gap: 0 .875rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+        .bio-tl-item::before {
+            content: '';
+            position: absolute;
+            left: calc(52px + 5px);
+            top: 20px;
+            bottom: -1.5rem;
+            width: 2px;
+            background: var(--light-gray);
+        }
+
+        .bio-tl-item:last-child::before {
+            display: none;
+        }
+
+    .bio-tl-dot {
+        grid-column: 2;
+        grid-row: 1;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--gold);
+        border: 2px solid var(--white);
+        box-shadow: 0 0 0 2px var(--gold);
+        margin-top: 4px;
+        z-index: 1;
+    }
+
+    .bio-tl-year {
+        grid-column: 1;
+        grid-row: 1;
+        text-align: right;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: .95rem;
+        color: var(--navy);
+        padding-top: 1px;
+    }
+
+    .bio-tl-body {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .bio-tl-titulo {
+        font-weight: 600;
+        font-size: .9rem;
+        color: var(--charcoal);
+        margin: 0 0 .25rem;
+    }
+
+    .bio-tl-desc {
+        font-size: .82rem;
+        color: var(--silver);
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .bio-educacion {
+        padding: 1.75rem;
+    }
+
+    .bio-edu-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--ivory);
+        border: 1px solid var(--light-gray);
+        border-radius: var(--radius-md);
+        margin-bottom: .75rem;
+        transition: box-shadow var(--transition);
+    }
+
+        .bio-edu-item:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+    .bio-edu-icon {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gold-light);
+        font-size: 1rem;
+    }
+
+    .bio-edu-titulo {
+        font-weight: 600;
+        font-size: .9rem;
+        color: var(--navy);
+        margin: 0 0 .2rem;
+    }
+
+    .bio-edu-inst {
+        font-size: .82rem;
+        color: var(--charcoal);
+        margin: 0 0 .2rem;
+    }
+
+    .bio-edu-anio {
+        font-size: .72rem;
+        color: var(--gold);
+        font-weight: 600;
+        letter-spacing: .05em;
+        margin: 0;
+    }
+
+    /* ══ RESPONSIVE ═════════════════════════════════════════════════ */
+    @@media (max-width: 1200px) {
+        .why-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @@media (max-width: 700px) {
+        .bio-panel {
+            grid-template-columns: 1fr;
+            max-height: 92vh;
+        }
+
+        .bio-left {
+            padding: 2rem 1.5rem;
+        }
+
+        .bio-photo, .bio-initials {
+            width: 90px;
+            height: 90px;
+        }
+
+        .bio-close {
+            background: rgba(0,0,0,.3);
+        }
+
+        .why-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-scroll-indicator {
+            display: none;
+        }
+
+        .cta-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .hero-stats-bar {
+            gap: 1rem;
+        }
+
+        .hero-pulse-badge {
+            font-size: .72rem;
+            padding: .4rem 1rem;
+        }
+    }
+</style>
+
+@* ── IntersectionObserver para reveal al scroll ─────────────────── *@
+<script>
+    (function() {
+        function initReveal() {
+            var io = new IntersectionObserver(function(entries) {
+                entries.forEach(function(e) {
+                    if (e.isIntersecting) { e.target.classList.add('visible'); }
+                });
+            }, { threshold: 0.11, rootMargin: '0px 0px -30px 0px' });
+            document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initReveal);
+        } else {
+            initReveal();
+        }
+        window._revealInit = initReveal;
+    })();
+</script>
+
+@code {
+    private class EducacionItem
+    {
+        [JsonPropertyName("titulo")] public string Titulo { get; set; } = string.Empty;
+        [JsonPropertyName("institucion")] public string Institucion { get; set; } = string.Empty;
+        [JsonPropertyName("anio")] public string Anio { get; set; } = string.Empty;
+    }
+    private class TimelineItem
+    {
+        [JsonPropertyName("anio")] public string Anio { get; set; } = string.Empty;
+        [JsonPropertyName("titulo")] public string Titulo { get; set; } = string.Empty;
+        [JsonPropertyName("descripcion")] public string Descripcion { get; set; } = string.Empty;
+    }
+
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private List<LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoResponse>? servicios;
+    private List<LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse>? miembros;
+    private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? config;
+
+    private Guid? openServiceId;
+    private Guid? expandedMiembroId;
+
+    private LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse? overlayMiembro;
+    private List<EducacionItem> overlayEducacion = new();
+    private List<TimelineItem> overlayTimeline = new();
+    private string bioTab = "bio";
+
+    protected override async Task OnInitializedAsync()
+    {
+        servicios = await ServicioService.GetAllAsync();
+        miembros = await MiembroService.GetAllAsync();
+        config = await ConfigService.GetAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try { await JS.InvokeVoidAsync("eval", "window._revealInit && window._revealInit()"); }
+        catch { }
+    }
+
+    private void ToggleServicio(Guid id) => openServiceId = openServiceId == id ? null : id;
+    private void ToggleMiembro(Guid id) => expandedMiembroId = expandedMiembroId == id ? null : id;
+
+    private void AbrirOverlay(LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse m)
+    {
+        overlayMiembro = m;
+        overlayEducacion = DeserializeList<EducacionItem>(m.EducacionJson);
+        overlayTimeline = DeserializeList<TimelineItem>(m.TimelineExperienciaJson);
+        bioTab = "bio";
+        if (string.IsNullOrWhiteSpace(m.BiografiaLarga) && string.IsNullOrWhiteSpace(m.BiografiaCompleta))
+        {
+            if (overlayTimeline.Any()) bioTab = "exp";
+            else if (overlayEducacion.Any()) bioTab = "edu";
+        }
+    }
+
+    private void CerrarOverlay() { overlayMiembro = null; }
+
+    private static List<T> DeserializeList<T>(string? json) where T : new()
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return JsonSerializer.Deserialize<List<T>>(json, JsonOpts) ?? new(); }
+        catch { return new(); }
+    }
+
+    private static string GetInitials(string nombre)
+    {
+        var p = (nombre ?? "?").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return p.Length >= 2 ? $"{p[0][0]}{p[1][0]}" : p.Length == 1 ? $"{p[0][0]}" : "?";
+    }
+
+    private record StaticService(string Titulo, string Desc, string Icono, bool Featured = false);
+    private readonly List<StaticService> staticServices = new()
+    {
+        new("Derecho Civil",    "Contratos, herencias, bienes raíces y responsabilidad civil.",   "bi-house-heart",  false),
+        new("Derecho Penal",    "Defensa y patrocinio en causas penales con estrategia sólida.",  "bi-shield-check", true),
+        new("Derecho Laboral",  "Tutela de tus derechos como trabajador o empleador.",            "bi-people",       false),
+        new("Derecho Familiar", "Divorcios, alimentos, custodia y adopciones.",                  "bi-heart",        false),
+        new("Derecho Mercantil","Constitución de empresas, contratos comerciales y litigios.",   "bi-building",     false),
+        new("Asesoría Integral","Orientación jurídica preventiva para decisiones importantes.",  "bi-lightbulb",    false),
+    };
+}

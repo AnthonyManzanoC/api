@@ -1,0 +1,1314 @@
+﻿@page "/admin/cms/miembros"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador,Abogado")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject LamillaEscudero.Application.Abstractions.IMiembroEstudioService MiembroService
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+<PageTitle>CMS — Equipo del Estudio</PageTitle>
+
+@* ── OVERLAY de edición (panel lateral deslizante) ─────────────── *@
+@if (showForm)
+{
+    <div class="miembro-drawer-backdrop" @onclick="CerrarDrawer"></div>
+    <div class="miembro-drawer @(showForm ? "miembro-drawer-open" : "")">
+
+        <div class="miembro-drawer-header">
+            <div>
+                <span class="miembro-drawer-title">
+                    <i class="bi bi-person-badge me-2" style="color:var(--gold);"></i>
+                    @(editId is null ? "Nuevo miembro" : "Editar miembro")
+                </span>
+                <span class="miembro-drawer-sub">
+                    @(editId is null ? "Completa el perfil del abogado" : form.Nombres)
+                </span>
+            </div>
+            <button class="miembro-drawer-close" @onclick="CerrarDrawer">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(msg))
+        {
+            <div class="miembro-alert @(isError ? "miembro-alert-error" : "miembro-alert-ok")">
+                <i class="bi @(isError ? "bi-exclamation-circle" : "bi-check-circle") me-2"></i>@msg
+            </div>
+        }
+
+        <div class="miembro-drawer-body">
+
+            @* ── PESTAÑAS ───────────────────────────────────────── *@
+            <div class="miembro-tabs">
+                <button class="miembro-tab @(drawerTab == "basico" ? "active" : "")"
+                        @onclick='() => drawerTab = "basico"'>
+                    <i class="bi bi-person me-1"></i>Básico
+                </button>
+                <button class="miembro-tab @(drawerTab == "foto" ? "active" : "")"
+                        @onclick='() => drawerTab = "foto"'>
+                    <i class="bi bi-camera me-1"></i>Foto
+                </button>
+                <button class="miembro-tab @(drawerTab == "perfil" ? "active" : "")"
+                        @onclick='() => drawerTab = "perfil"'>
+                    <i class="bi bi-file-person me-1"></i>Perfil
+                </button>
+                <button class="miembro-tab @(drawerTab == "cv" ? "active" : "")"
+                        @onclick='() => drawerTab = "cv"'>
+                    <i class="bi bi-list-stars me-1"></i>CV
+                </button>
+            </div>
+
+            @* ══ TAB: BÁSICO ══════════════════════════════════════ *@
+            @if (drawerTab == "basico")
+            {
+                <div class="miembro-field-group">
+                    <label class="miembro-label">Nombres completos <span class="req">*</span></label>
+                    <input class="miembro-input" @bind="form.Nombres"
+                           placeholder="Dr. Juan Lamilla Escudero" />
+                </div>
+                <div class="miembro-field-group">
+                    <label class="miembro-label">Cargo / Especialidad <span class="req">*</span></label>
+                    <input class="miembro-input" @bind="form.Cargo"
+                           placeholder="Abogado Senior — Derecho Penal" />
+                </div>
+                <div class="miembro-field-group">
+                    <label class="miembro-label">
+                        Biografía breve
+                        <span class="miembro-label-hint">(tarjeta — 1-2 oraciones)</span>
+                    </label>
+                    <textarea class="miembro-input" rows="3" @bind="form.BiografiaBreve"
+                              placeholder="Especialista con 15 años de trayectoria..."></textarea>
+                </div>
+                <div class="miembro-row">
+                    <div class="miembro-field-group">
+                        <label class="miembro-label">Email</label>
+                        <input class="miembro-input" type="email" @bind="form.Email"
+                               placeholder="abogado@estudio.com" />
+                    </div>
+                    <div class="miembro-field-group miembro-field-xs">
+                        <label class="miembro-label">Orden</label>
+                        <input class="miembro-input" type="number" @bind="form.Orden" min="0" />
+                    </div>
+                </div>
+                <div class="miembro-field-group">
+                    <label class="miembro-label">LinkedIn</label>
+                    <div class="miembro-input-icon-wrap">
+                        <i class="bi bi-linkedin miembro-input-icon"></i>
+                        <input class="miembro-input miembro-input-padded" @bind="form.LinkedIn"
+                               placeholder="https://linkedin.com/in/..." />
+                    </div>
+                </div>
+            }
+
+            @* ══ TAB: FOTO ════════════════════════════════════════ *@
+            @if (drawerTab == "foto")
+            {
+                <div class="foto-preview-wrap">
+                    @{
+                        var src = !string.IsNullOrWhiteSpace(form.PhotoData) ? form.PhotoData
+                        : !string.IsNullOrWhiteSpace(form.FotoUrl) ? form.FotoUrl
+                        : null;
+                    }
+                    @if (src is not null)
+                    {
+                        <img src="@src" class="foto-preview-img" alt="Vista previa" />
+                        <div class="foto-preview-actions">
+                            <button type="button" class="foto-remove-btn" @onclick="QuitarFoto">
+                                <i class="bi bi-trash3 me-1"></i>Quitar foto
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="foto-placeholder">
+                            <div class="foto-initials-lg">@GetInit(form.Nombres)</div>
+                            <span>Sin foto cargada</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="foto-upload-zone">
+                    <i class="bi bi-cloud-arrow-up foto-upload-icon"></i>
+                    <p class="foto-upload-text">Sube una foto desde tu dispositivo</p>
+                    <p class="foto-upload-hint">JPG o PNG · máx. 2 MB</p>
+                    <InputFile OnChange="CargarFoto" accept=".jpg,.jpeg,.png"
+                               class="foto-input-file" />
+                    @if (!string.IsNullOrWhiteSpace(fotoError))
+                    {
+                        <p class="foto-error">@fotoError</p>
+                    }
+                </div>
+
+                <div class="miembro-divider-text">
+                    <span>— o usa una URL externa —</span>
+                </div>
+
+                <div class="miembro-field-group">
+                    <label class="miembro-label">URL de foto externa</label>
+                    <input class="miembro-input" @bind="form.FotoUrl"
+                           placeholder="https://..." />
+                    <span class="miembro-field-hint">
+                        Si subes un archivo, este campo queda como respaldo.
+                    </span>
+                </div>
+            }
+
+            @* ══ TAB: PERFIL ══════════════════════════════════════ *@
+            @if (drawerTab == "perfil")
+            {
+                <div class="miembro-field-group">
+                    <label class="miembro-label">
+                        <i class="bi bi-quote me-1" style="color:var(--gold);"></i>
+                        Frase destacada
+                        <span class="miembro-label-hint">(slogan personal en el overlay)</span>
+                    </label>
+                    <input class="miembro-input" @bind="form.FraseDestacada"
+                           placeholder='"La justicia no es solo un principio, es una práctica diaria."' />
+                </div>
+                <div class="miembro-field-group">
+                    <label class="miembro-label">
+                        Biografía completa
+                        <span class="miembro-label-hint">(aparece en el overlay de perfil)</span>
+                    </label>
+                    <textarea class="miembro-input" rows="8" @bind="form.BiografiaLarga"
+                              placeholder="Trayectoria detallada, especialidades, logros, publicaciones..."></textarea>
+                </div>
+            }
+
+            @* ══ TAB: CV ══════════════════════════════════════════ *@
+            @if (drawerTab == "cv")
+            {
+                @* ── Educación ───────────────────────────────────── *@
+                <div class="cv-section">
+                    <div class="cv-section-header">
+                        <span><i class="bi bi-mortarboard-fill me-2" style="color:var(--gold);"></i>Educación / Títulos</span>
+                        <button type="button" class="cv-add-btn" @onclick="AddEducacion">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+
+                    @foreach (var (item, idx) in educacionItems.Select((x, i) => (x, i)))
+                    {
+                        <div class="cv-item-card">
+                            <div class="cv-item-header">
+                                <span class="cv-item-num">@(idx + 1)</span>
+                                <button type="button" class="cv-remove-btn"
+                                        @onclick="() => RemoveEducacion(idx)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="miembro-row">
+                                <div class="miembro-field-group">
+                                    <label class="miembro-label">Título / Grado</label>
+                                    <input class="miembro-input" @bind="item.Titulo"
+                                           placeholder="Dr. en Derecho" />
+                                </div>
+                                <div class="miembro-field-group miembro-field-xs">
+                                    <label class="miembro-label">Año</label>
+                                    <input class="miembro-input" @bind="item.Anio"
+                                           placeholder="2005" />
+                                </div>
+                            </div>
+                            <div class="miembro-field-group">
+                                <label class="miembro-label">Institución</label>
+                                <input class="miembro-input" @bind="item.Institucion"
+                                       placeholder="Universidad Central del Ecuador" />
+                            </div>
+                        </div>
+                    }
+
+                    @if (!educacionItems.Any())
+                    {
+                        <p class="cv-empty">Sin títulos agregados. Presiona + para añadir.</p>
+                    }
+                </div>
+
+                @* ── Timeline de experiencia ──────────────────────── *@
+                <div class="cv-section mt-4">
+                    <div class="cv-section-header">
+                        <span><i class="bi bi-briefcase-fill me-2" style="color:var(--gold);"></i>Trayectoria / Experiencia</span>
+                        <button type="button" class="cv-add-btn" @onclick="AddTimeline">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+
+                    @foreach (var (item, idx) in timelineItems.Select((x, i) => (x, i)))
+                    {
+                        <div class="cv-item-card">
+                            <div class="cv-item-header">
+                                <span class="cv-item-num">@(idx + 1)</span>
+                                <button type="button" class="cv-remove-btn"
+                                        @onclick="() => RemoveTimeline(idx)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="miembro-row">
+                                <div class="miembro-field-group miembro-field-xs">
+                                    <label class="miembro-label">Año</label>
+                                    <input class="miembro-input" @bind="item.Anio"
+                                           placeholder="2018" />
+                                </div>
+                                <div class="miembro-field-group">
+                                    <label class="miembro-label">Cargo / Título</label>
+                                    <input class="miembro-input" @bind="item.Titulo"
+                                           placeholder="Socio Director" />
+                                </div>
+                            </div>
+                            <div class="miembro-field-group">
+                                <label class="miembro-label">Descripción</label>
+                                <textarea class="miembro-input" rows="2" @bind="item.Descripcion"
+                                          placeholder="Fundó la práctica de litigios..."></textarea>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!timelineItems.Any())
+                    {
+                        <p class="cv-empty">Sin hitos agregados. Presiona + para añadir.</p>
+                    }
+                </div>
+            }
+
+        </div>
+
+        @* ── Footer de acciones ──────────────────────────────── *@
+        <div class="miembro-drawer-footer">
+            <button class="miembro-btn-save" @onclick="Guardar" disabled="@saving">
+                @if (saving)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                else
+                {
+                    <i class="bi bi-floppy me-2"></i>
+                }
+                @(saving ? "Guardando…" : "Guardar cambios")
+            </button>
+            <button class="miembro-btn-cancel" @onclick="CerrarDrawer">
+                Cancelar
+            </button>
+        </div>
+
+    </div>
+}
+
+@* ── PÁGINA PRINCIPAL ──────────────────────────────────────────── *@
+<div class="miembro-page">
+
+    @* Cabecera de página *@
+    <div class="miembro-page-header">
+        <div>
+            <h1 class="miembro-page-title">
+                <i class="bi bi-people-fill me-2" style="color:var(--gold);"></i>Equipo del Estudio
+            </h1>
+            <p class="miembro-page-sub">Gestiona los perfiles públicos de los abogados.</p>
+        </div>
+        <button class="miembro-btn-new" @onclick="NuevoMiembro">
+            <i class="bi bi-person-plus-fill me-2"></i>Nuevo miembro
+        </button>
+    </div>
+
+    @* Mensaje global *@
+    @if (!string.IsNullOrWhiteSpace(globalMsg))
+    {
+        <div class="miembro-alert miembro-alert-ok mb-3">
+            <i class="bi bi-check-circle me-2"></i>@globalMsg
+        </div>
+    }
+
+    @* Grid de tarjetas *@
+    @if (!miembros.Any())
+    {
+        <div class="miembro-empty-state">
+            <i class="bi bi-people"></i>
+            <p>Sin miembros registrados aún.</p>
+            <button class="miembro-btn-new" @onclick="NuevoMiembro">
+                <i class="bi bi-person-plus-fill me-2"></i>Agregar el primero
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="miembro-cards-grid">
+            @foreach (var m in miembros)
+            {
+                var src = !string.IsNullOrWhiteSpace(m.PhotoData) ? m.PhotoData
+                : !string.IsNullOrWhiteSpace(m.FotoUrl) ? m.FotoUrl : null;
+
+                <div class="miembro-card">
+                    <div class="miembro-card-avatar">
+                        @if (src is not null)
+                        {
+                            <img src="@src" alt="@m.Nombres" class="miembro-card-photo" />
+                        }
+                        else
+                        {
+                            <div class="miembro-card-initials">@GetInit(m.Nombres)</div>
+                        }
+                    </div>
+                    <div class="miembro-card-info">
+                        <span class="miembro-card-name">@m.Nombres</span>
+                        <span class="miembro-card-cargo">@m.Cargo</span>
+                        @if (!string.IsNullOrWhiteSpace(m.Email))
+                        {
+                            <span class="miembro-card-email">@m.Email</span>
+                        }
+                        <div class="miembro-card-badges">
+                            @if (!string.IsNullOrWhiteSpace(m.FraseDestacada))
+                            {
+                                <span class="miembro-badge miembro-badge-gold">
+                                    <i class="bi bi-quote me-1"></i>Frase
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(m.BiografiaLarga))
+                            {
+                                <span class="miembro-badge miembro-badge-navy">
+                                    <i class="bi bi-file-text me-1"></i>Bio larga
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(m.EducacionJson))
+                            {
+                                <span class="miembro-badge miembro-badge-navy">
+                                    <i class="bi bi-mortarboard me-1"></i>CV
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <div class="miembro-card-order">
+                        <span class="miembro-order-pill">@m.Orden</span>
+                    </div>
+                    <div class="miembro-card-actions">
+                        <button class="miembro-action-btn miembro-action-edit"
+                                @onclick="() => Editar(m)" title="Editar">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                        <button class="miembro-action-btn miembro-action-del"
+                                @onclick="() => Eliminar(m.Id)" title="Eliminar">
+                            <i class="bi bi-trash3-fill"></i>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@* ── ESTILOS ──────────────────────────────────────────────────── *@
+<style>
+    /* ── PAGE ──────────────────────────────────────────────────── */
+    .miembro-page {
+        max-width: 1100px;
+    }
+
+    .miembro-page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .miembro-page-title {
+        font-family: var(--font-display);
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--navy);
+        margin: 0;
+    }
+
+    .miembro-page-sub {
+        font-size: .85rem;
+        color: var(--silver);
+        margin: .25rem 0 0;
+    }
+
+    /* ── CARDS GRID ────────────────────────────────────────────── */
+    .miembro-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1rem;
+    }
+
+    .miembro-card {
+        background: var(--white);
+        border: 1.5px solid var(--light-gray);
+        border-radius: var(--radius-lg);
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        transition: border-color var(--transition), box-shadow var(--transition);
+        position: relative;
+    }
+
+        .miembro-card:hover {
+            border-color: var(--gold);
+            box-shadow: var(--shadow-md);
+        }
+
+    .miembro-card-avatar {
+        flex-shrink: 0;
+    }
+
+    .miembro-card-photo {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2.5px solid var(--gold);
+    }
+
+    .miembro-card-initials {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        border: 2px solid var(--gold);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--gold-light);
+    }
+
+    .miembro-card-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .miembro-card-name {
+        display: block;
+        font-weight: 600;
+        font-size: .925rem;
+        color: var(--navy);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .miembro-card-cargo {
+        display: block;
+        font-size: .78rem;
+        color: var(--silver);
+        margin-top: .1rem;
+    }
+
+    .miembro-card-email {
+        display: block;
+        font-size: .72rem;
+        color: var(--silver);
+        margin-top: .1rem;
+    }
+
+    .miembro-card-badges {
+        display: flex;
+        gap: .35rem;
+        flex-wrap: wrap;
+        margin-top: .5rem;
+    }
+
+    .miembro-badge {
+        font-size: .65rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        padding: .15rem .5rem;
+        border-radius: 100px;
+    }
+
+    .miembro-badge-gold {
+        background: var(--gold-pale);
+        color: #7a5c1a;
+    }
+
+    .miembro-badge-navy {
+        background: rgba(11,31,58,.08);
+        color: var(--navy);
+    }
+
+    .miembro-card-order {
+        flex-shrink: 0;
+    }
+
+    .miembro-order-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--ivory);
+        border: 1px solid var(--light-gray);
+        font-size: .75rem;
+        font-weight: 600;
+        color: var(--silver);
+    }
+
+    .miembro-card-actions {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+    }
+
+    .miembro-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-sm);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .8rem;
+        cursor: pointer;
+        transition: all var(--transition);
+    }
+
+    .miembro-action-edit {
+        background: rgba(11,31,58,.06);
+        color: var(--navy);
+    }
+
+        .miembro-action-edit:hover {
+            background: var(--navy);
+            color: white;
+        }
+
+    .miembro-action-del {
+        background: rgba(220,38,38,.06);
+        color: #dc2626;
+    }
+
+        .miembro-action-del:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+    /* ── EMPTY STATE ────────────────────────────────────────────── */
+    .miembro-empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 4rem 2rem;
+        background: var(--white);
+        border: 2px dashed var(--light-gray);
+        border-radius: var(--radius-xl);
+        color: var(--silver);
+    }
+
+        .miembro-empty-state i {
+            font-size: 2.5rem;
+        }
+
+        .miembro-empty-state p {
+            font-size: .9rem;
+            margin: 0;
+        }
+
+    /* ── BUTTONS ────────────────────────────────────────────────── */
+    .miembro-btn-new {
+        display: inline-flex;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        padding: .6rem 1.25rem;
+        font-size: .875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background var(--transition);
+        white-space: nowrap;
+    }
+
+        .miembro-btn-new:hover {
+            background: var(--navy-mid);
+        }
+
+    .miembro-btn-save {
+        display: inline-flex;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        padding: .7rem 1.5rem;
+        font-size: .9rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background var(--transition);
+        flex: 1;
+    }
+
+        .miembro-btn-save:hover:not(:disabled) {
+            background: var(--navy-mid);
+        }
+
+        .miembro-btn-save:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+    .miembro-btn-cancel {
+        background: var(--ivory);
+        color: var(--silver);
+        border: 1.5px solid var(--light-gray);
+        border-radius: var(--radius-md);
+        padding: .7rem 1.25rem;
+        font-size: .875rem;
+        cursor: pointer;
+        transition: all var(--transition);
+    }
+
+        .miembro-btn-cancel:hover {
+            border-color: var(--charcoal);
+            color: var(--charcoal);
+        }
+
+    /* ── ALERT ─────────────────────────────────────────────────── */
+    .miembro-alert {
+        display: flex;
+        align-items: center;
+        padding: .75rem 1rem;
+        border-radius: var(--radius-md);
+        font-size: .875rem;
+        margin: 0 1.5rem;
+    }
+
+    .miembro-alert-ok {
+        background: #f0faf5;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .miembro-alert-error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    /* ── DRAWER ─────────────────────────────────────────────────── */
+    .miembro-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(11,31,58,.45);
+        backdrop-filter: blur(4px);
+        z-index: 9000;
+        animation: fadeIn 200ms ease;
+    }
+
+    .miembro-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 560px;
+        max-width: 95vw;
+        height: 100vh;
+        background: var(--white);
+        box-shadow: -8px 0 40px rgba(11,31,58,.2);
+        z-index: 9001;
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform 280ms cubic-bezier(.4,0,.2,1);
+        overflow: hidden;
+    }
+
+    .miembro-drawer-open {
+        transform: translateX(0) !important;
+    }
+
+    .miembro-drawer-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 1.5rem 1.5rem 1.25rem;
+        border-bottom: 1px solid var(--light-gray);
+        background: var(--ivory);
+    }
+
+    .miembro-drawer-title {
+        font-family: var(--font-display);
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--navy);
+        display: block;
+    }
+
+    .miembro-drawer-sub {
+        font-size: .78rem;
+        color: var(--silver);
+        margin-top: .25rem;
+        display: block;
+    }
+
+    .miembro-drawer-close {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: none;
+        color: var(--silver);
+        cursor: pointer;
+        font-size: 1rem;
+        border-radius: var(--radius-sm);
+        transition: all var(--transition);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .miembro-drawer-close:hover {
+            background: var(--cream);
+            color: var(--charcoal);
+        }
+
+    .miembro-drawer-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.5rem;
+    }
+
+        .miembro-drawer-body::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .miembro-drawer-body::-webkit-scrollbar-thumb {
+            background: var(--light-gray);
+            border-radius: 2px;
+        }
+
+    .miembro-drawer-footer {
+        display: flex;
+        gap: .75rem;
+        padding: 1.25rem 1.5rem;
+        border-top: 1px solid var(--light-gray);
+        background: var(--ivory);
+    }
+
+    /* ── TABS ───────────────────────────────────────────────────── */
+    .miembro-tabs {
+        display: flex;
+        gap: .25rem;
+        background: var(--ivory);
+        border: 1px solid var(--light-gray);
+        border-radius: var(--radius-md);
+        padding: .25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .miembro-tab {
+        flex: 1;
+        padding: .45rem .5rem;
+        font-size: .78rem;
+        font-weight: 500;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: calc(var(--radius-md) - 2px);
+        color: var(--silver);
+        transition: all var(--transition);
+        white-space: nowrap;
+    }
+
+        .miembro-tab.active {
+            background: var(--white);
+            color: var(--navy);
+            box-shadow: var(--shadow-sm);
+            font-weight: 600;
+        }
+
+        .miembro-tab:hover:not(.active) {
+            color: var(--charcoal);
+        }
+
+    /* ── FORM FIELDS ────────────────────────────────────────────── */
+    .miembro-field-group {
+        margin-bottom: 1.1rem;
+    }
+
+    .miembro-label {
+        display: block;
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--charcoal);
+        margin-bottom: .4rem;
+    }
+
+    .miembro-label-hint {
+        font-size: .68rem;
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--silver);
+    }
+
+    .req {
+        color: #dc2626;
+    }
+
+    .miembro-input {
+        width: 100%;
+        padding: .6rem .875rem;
+        border: 1.5px solid var(--light-gray);
+        border-radius: var(--radius-md);
+        background: var(--ivory);
+        color: var(--charcoal);
+        font-family: var(--font-body);
+        font-size: .9rem;
+        transition: border-color var(--transition), box-shadow var(--transition);
+        outline: none;
+        resize: vertical;
+    }
+
+        .miembro-input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(184,150,62,.12);
+            background: var(--white);
+        }
+
+    .miembro-field-hint {
+        font-size: .72rem;
+        color: var(--silver);
+        margin-top: .3rem;
+        display: block;
+    }
+
+    .miembro-row {
+        display: flex;
+        gap: .75rem;
+    }
+
+        .miembro-row .miembro-field-group {
+            flex: 1;
+        }
+
+    .miembro-field-xs {
+        max-width: 90px;
+    }
+
+    .miembro-input-icon-wrap {
+        position: relative;
+    }
+
+    .miembro-input-icon {
+        position: absolute;
+        left: .875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--silver);
+        pointer-events: none;
+    }
+
+    .miembro-input-padded {
+        padding-left: 2.25rem !important;
+    }
+
+    .miembro-divider-text {
+        text-align: center;
+        font-size: .75rem;
+        color: var(--silver);
+        margin: 1rem 0;
+        position: relative;
+    }
+
+        .miembro-divider-text::before, .miembro-divider-text::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: calc(50% - 80px);
+            height: 1px;
+            background: var(--light-gray);
+        }
+
+        .miembro-divider-text::before {
+            left: 0;
+        }
+
+        .miembro-divider-text::after {
+            right: 0;
+        }
+
+    /* ── FOTO ───────────────────────────────────────────────────── */
+    .foto-preview-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .foto-preview-img {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--gold);
+        box-shadow: var(--shadow-md);
+    }
+
+    .foto-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .5rem;
+        color: var(--silver);
+        font-size: .8rem;
+    }
+
+    .foto-initials-lg {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        border: 3px solid rgba(184,150,62,.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gold-light);
+    }
+
+    .foto-remove-btn {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+        border-radius: var(--radius-sm);
+        padding: .35rem .75rem;
+        font-size: .8rem;
+        cursor: pointer;
+        transition: all var(--transition);
+    }
+
+        .foto-remove-btn:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+    .foto-upload-zone {
+        border: 2px dashed var(--light-gray);
+        border-radius: var(--radius-lg);
+        padding: 1.75rem;
+        text-align: center;
+        background: var(--ivory);
+        transition: border-color var(--transition);
+        position: relative;
+        cursor: pointer;
+    }
+
+        .foto-upload-zone:hover {
+            border-color: var(--gold);
+        }
+
+    .foto-upload-icon {
+        font-size: 1.75rem;
+        color: var(--gold);
+        display: block;
+        margin-bottom: .5rem;
+    }
+
+    .foto-upload-text {
+        font-size: .875rem;
+        color: var(--charcoal);
+        margin: 0 0 .25rem;
+    }
+
+    .foto-upload-hint {
+        font-size: .75rem;
+        color: var(--silver);
+        margin: 0 0 .75rem;
+    }
+
+    .foto-input-file {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    .foto-error {
+        color: #dc2626;
+        font-size: .8rem;
+        margin-top: .5rem;
+    }
+
+    /* ── CV SECTION ─────────────────────────────────────────────── */
+    .cv-section {
+    }
+
+    .cv-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: .875rem;
+        font-size: .875rem;
+        font-weight: 600;
+        color: var(--navy);
+    }
+
+    .cv-add-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: none;
+        background: var(--navy);
+        color: white;
+        font-size: .9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background var(--transition);
+    }
+
+        .cv-add-btn:hover {
+            background: var(--gold);
+        }
+
+    .cv-item-card {
+        background: var(--ivory);
+        border: 1px solid var(--light-gray);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        margin-bottom: .75rem;
+    }
+
+    .cv-item-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: .75rem;
+    }
+
+    .cv-item-num {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--navy);
+        color: var(--gold-light);
+        font-size: .7rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .cv-remove-btn {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: none;
+        background: #fef2f2;
+        color: #dc2626;
+        font-size: .7rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition);
+    }
+
+        .cv-remove-btn:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+    .cv-empty {
+        font-size: .8rem;
+        color: var(--silver);
+        text-align: center;
+        padding: 1rem;
+        border: 1px dashed var(--light-gray);
+        border-radius: var(--radius-md);
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0
+        }
+
+        to {
+            opacity: 1
+        }
+    }
+</style>
+
+@code {
+    /* ── modelos JSON ─────────────────────────────────────────────── */
+    private class EducacionItem
+    {
+        public string Titulo { get; set; } = string.Empty;
+        public string Institucion { get; set; } = string.Empty;
+        public string Anio { get; set; } = string.Empty;
+    }
+    private class TimelineItem
+    {
+        public string Anio { get; set; } = string.Empty;
+        public string Titulo { get; set; } = string.Empty;
+        public string Descripcion { get; set; } = string.Empty;
+    }
+
+    /* ── estado ───────────────────────────────────────────────────── */
+    private List<LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse> miembros = new();
+    private LamillaEscudero.Application.Models.Miembros.MiembroEstudioCreateRequest form = new();
+    private Guid? editId;
+    private string? msg;
+    private string? globalMsg;
+    private string? fotoError;
+    private bool isError;
+    private bool saving;
+    private bool showForm;
+    private string drawerTab = "basico";
+
+    private List<EducacionItem> educacionItems = new();
+    private List<TimelineItem> timelineItems = new();
+
+    private static readonly JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    /* ── ciclo de vida ────────────────────────────────────────────── */
+    protected override async Task OnInitializedAsync()
+        => miembros = await MiembroService.GetAllAsync();
+
+    /* ── acciones principales ─────────────────────────────────────── */
+    private void NuevoMiembro()
+    {
+        editId = null; form = new(); msg = null; fotoError = null;
+        educacionItems = new(); timelineItems = new();
+        drawerTab = "basico"; showForm = true;
+    }
+
+    private void Editar(LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse m)
+    {
+        editId = m.Id;
+        form = new()
+        {
+            Nombres = m.Nombres,
+            Cargo = m.Cargo,
+            BiografiaBreve = m.BiografiaBreve,
+            BiografiaCompleta = m.BiografiaCompleta,
+            FotoUrl = m.FotoUrl,
+            PhotoData = m.PhotoData,
+            FraseDestacada = m.FraseDestacada,
+            BiografiaLarga = m.BiografiaLarga,
+            EducacionJson = m.EducacionJson,
+            TimelineExperienciaJson = m.TimelineExperienciaJson,
+            LinkedIn = m.LinkedIn,
+            Email = m.Email,
+            Orden = m.Orden
+        };
+        educacionItems = DeserializeList<EducacionItem>(m.EducacionJson);
+        timelineItems = DeserializeList<TimelineItem>(m.TimelineExperienciaJson);
+        msg = null; fotoError = null;
+        drawerTab = "basico"; showForm = true;
+    }
+
+    private void CerrarDrawer() { showForm = false; msg = null; }
+
+    private async Task Guardar()
+    {
+        if (string.IsNullOrWhiteSpace(form.Nombres) || string.IsNullOrWhiteSpace(form.Cargo))
+        {
+            msg = "Nombres y Cargo son obligatorios."; isError = true; return;
+        }
+
+        // Serializa listas a JSON
+        form.EducacionJson = educacionItems.Any()
+            ? JsonSerializer.Serialize(educacionItems, JsonOpts) : null;
+        form.TimelineExperienciaJson = timelineItems.Any()
+            ? JsonSerializer.Serialize(timelineItems, JsonOpts) : null;
+
+        saving = true;
+        try
+        {
+            if (editId is null)
+            {
+                await MiembroService.CreateAsync(form);
+            }
+            else
+            {
+                await MiembroService.UpdateAsync(editId.Value,
+                    new LamillaEscudero.Application.Models.Miembros.MiembroEstudioUpdateRequest
+                    {
+                        Nombres = form.Nombres,
+                        Cargo = form.Cargo,
+                        BiografiaBreve = form.BiografiaBreve,
+                        BiografiaCompleta = form.BiografiaCompleta,
+                        FotoUrl = form.FotoUrl,
+                        PhotoData = form.PhotoData,
+                        FraseDestacada = form.FraseDestacada,
+                        BiografiaLarga = form.BiografiaLarga,
+                        EducacionJson = form.EducacionJson,
+                        TimelineExperienciaJson = form.TimelineExperienciaJson,
+                        LinkedIn = form.LinkedIn,
+                        Email = form.Email,
+                        Orden = form.Orden,
+                        IsActive = true
+                    });
+            }
+            globalMsg = $"'{form.Nombres}' guardado correctamente.";
+            miembros = await MiembroService.GetAllAsync();
+            CerrarDrawer();
+        }
+        finally { saving = false; }
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await MiembroService.DeleteAsync(id);
+        miembros = await MiembroService.GetAllAsync();
+    }
+
+    /* ── foto ─────────────────────────────────────────────────────── */
+    private async Task CargarFoto(InputFileChangeEventArgs e)
+    {
+        fotoError = null;
+        var file = e.File;
+        var allowed = new[] { "image/jpeg", "image/png" };
+
+        if (!allowed.Contains(file.ContentType))
+        {
+            fotoError = "Solo se permiten archivos JPG o PNG."; return;
+        }
+        if (file.Size > 2 * 1024 * 1024)
+        {
+            fotoError = "El archivo supera los 2 MB."; return;
+        }
+
+        using var ms = new System.IO.MemoryStream();
+        await file.OpenReadStream(2 * 1024 * 1024).CopyToAsync(ms);
+        var base64 = Convert.ToBase64String(ms.ToArray());
+        form.PhotoData = $"data:{file.ContentType};base64,{base64}";
+        form.FotoUrl = null; // la foto local tiene prioridad
+    }
+
+    private void QuitarFoto() { form.PhotoData = null; form.FotoUrl = null; }
+
+    /* ── listas dinámicas ─────────────────────────────────────────── */
+    private void AddEducacion() => educacionItems.Add(new EducacionItem());
+    private void RemoveEducacion(int i) => educacionItems.RemoveAt(i);
+    private void AddTimeline() => timelineItems.Add(new TimelineItem());
+    private void RemoveTimeline(int i) => timelineItems.RemoveAt(i);
+
+    /* ── helpers ──────────────────────────────────────────────────── */
+    private static List<T> DeserializeList<T>(string? json) where T : new()
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return JsonSerializer.Deserialize<List<T>>(json, JsonOpts) ?? new(); }
+        catch { return new(); }
+    }
+
+    private static string GetInit(string nombre)
+    {
+        var p = (nombre ?? "?").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return p.Length >= 2 ? $"{p[0][0]}{p[1][0]}" : p.Length > 0 ? $"{p[0][0]}" : "?";
+    }
+}

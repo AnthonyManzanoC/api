@@ -1,0 +1,150 @@
+﻿@page "/admin/plazos"
+@attribute [Authorize(Roles = "Administrador,Abogado,Asistente")]
+@rendermode InteractiveServer
+@layout LamillaEscudero.Web.Components.Layout.AdminLayout
+@inject IEventoProcesalService EventoService
+@inject IPlazoService PlazoService
+
+<PageTitle>Plazos</PageTitle>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>@(editingId is null ? "Nuevo plazo" : "Editar plazo")</strong></div>
+            <div class="card-body">
+                <EditForm Model="form" OnValidSubmit="Guardar">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-2">
+                        <label class="form-label">Evento procesal</label>
+                        <InputSelect class="form-select" @bind-Value="form.EventoProcesalId">
+                            <option value="00000000-0000-0000-0000-000000000000">Seleccione...</option>
+                            @foreach (var e in eventos)
+                            {
+                                <option value="@e.Id">@($"{e.Tipo} - {e.NumeroProceso}")</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Título</label>
+                        <InputText class="form-control" @bind-Value="form.Titulo" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Fecha vencimiento</label>
+                        <InputDate class="form-control" @bind-Value="form.FechaVencimiento" />
+                    </div>
+                    <div class="mb-2 form-check">
+                        <InputCheckbox class="form-check-input" @bind-Value="form.ConfirmadoPorAbogado" />
+                        <label class="form-check-label">Confirmado por abogado</label>
+                    </div>
+                    <div class="mb-2 form-check">
+                        <InputCheckbox class="form-check-input" @bind-Value="form.Cumplido" />
+                        <label class="form-check-label">Cumplido</label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notas</label>
+                        <InputTextArea class="form-control" rows="3" @bind-Value="form.Notas" />
+                    </div>
+
+                    <button class="btn btn-dark" type="submit">Guardar</button>
+                    <button class="btn btn-outline-secondary ms-2" type="button" @onclick="Limpiar">Limpiar</button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white"><strong>Listado</strong></div>
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Proceso</th>
+                            <th>Vence</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in plazos)
+                        {
+                            <tr>
+                                <td>@p.Titulo</td>
+                                <td>@p.NumeroProceso</td>
+                                <td>@p.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-primary me-1" @onclick="() => Editar(p)">Editar</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Eliminar(p.Id)">Eliminar</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<EventoProcesalResponse> eventos = new();
+    private List<PlazoResponse> plazos = new();
+    private PlazoCreateRequest form = new() { FechaVencimiento = DateTime.Today };
+    private Guid? editingId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        eventos = await EventoService.GetAllAsync();
+        plazos = await PlazoService.GetAllAsync();
+    }
+
+    private async Task Guardar()
+    {
+        if (editingId is null)
+            await PlazoService.CreateAsync(form);
+        else
+        {
+            var update = new PlazoUpdateRequest
+            {
+                EventoProcesalId = form.EventoProcesalId,
+                Titulo = form.Titulo,
+                FechaVencimiento = form.FechaVencimiento,
+                ConfirmadoPorAbogado = form.ConfirmadoPorAbogado,
+                Cumplido = form.Cumplido,
+                Notas = form.Notas,
+                IsActive = true
+            };
+
+            await PlazoService.UpdateAsync(editingId.Value, update);
+        }
+
+        plazos = await PlazoService.GetAllAsync();
+        Limpiar();
+    }
+
+    private void Editar(PlazoResponse p)
+    {
+        editingId = p.Id;
+        form = new PlazoCreateRequest
+        {
+            EventoProcesalId = p.EventoProcesalId,
+            Titulo = p.Titulo,
+            FechaVencimiento = p.FechaVencimiento,
+            ConfirmadoPorAbogado = p.ConfirmadoPorAbogado,
+            Cumplido = p.Cumplido,
+            Notas = p.Notas
+        };
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        await PlazoService.DeleteAsync(id);
+        plazos = await PlazoService.GetAllAsync();
+    }
+
+    private void Limpiar()
+    {
+        editingId = null;
+        form = new PlazoCreateRequest { FechaVencimiento = DateTime.Today };
+    }
+}

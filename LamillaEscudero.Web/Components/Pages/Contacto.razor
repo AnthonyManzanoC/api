@@ -1,0 +1,366 @@
+﻿@page "/contacto"
+@* ✅ INYECCIÓN CORRECTA: Usamos los servicios directos de la arquitectura *@
+@inject LamillaEscudero.Application.Abstractions.IConfiguracionEstudioService ConfigService
+@inject LamillaEscudero.Application.Abstractions.IConsultaWebService ConsultaService
+@rendermode InteractiveServer
+
+<PageTitle>Contacto — Lamilla Escudero</PageTitle>
+
+<section class="contact-section">
+    <div class="container">
+        <div class="row gy-5">
+
+            <div class="col-lg-6">
+                <span class="section-eyebrow">Estamos para ayudarte</span>
+                <h1 class="section-title mt-2">Envíe su consulta</h1>
+                <p class="text-muted mt-2 mb-4">
+                    Complete el formulario y un miembro del estudio se pondrá en contacto
+                    con usted a la brevedad.
+                </p>
+
+                @if (!string.IsNullOrWhiteSpace(mensaje))
+                {
+                    <div class="contact-success">
+                        <div class="contact-success-icon">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                        <div>
+                            <div class="contact-success-title">¡Consulta enviada!</div>
+                            <div class="contact-success-sub">@mensaje</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card border-0">
+                        <div class="card-body p-4">
+                            <EditForm Model="form" OnValidSubmit="Enviar">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary class="validation-message mb-3" />
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nombre completo *</label>
+                                        <InputText class="form-control" @bind-Value="form.Nombre"
+                                                   placeholder="Su nombre" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Correo electrónico</label>
+                                        <InputText class="form-control" @bind-Value="form.Email"
+                                                   placeholder="correo@ejemplo.com" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Teléfono</label>
+                                        <InputText class="form-control" @bind-Value="form.Telefono"
+                                                   placeholder="+593 9..." />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Asunto *</label>
+                                        <InputText class="form-control" @bind-Value="form.Asunto"
+                                                   placeholder="Motivo de consulta" />
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Mensaje *</label>
+                                        <InputTextArea class="form-control" rows="5"
+                                                       @bind-Value="form.Mensaje"
+                                                       placeholder="Describa brevemente su situación..." />
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-3 mt-4">
+                                    <button class="btn btn-dark" type="submit" disabled="@enviando">
+                                        @if (enviando)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-send me-2"></i>
+                                        }
+                                        Enviar consulta
+                                    </button>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bi bi-lock me-1"></i>Sus datos son confidenciales.
+                                    </p>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-6">
+                <div class="contact-info-card">
+
+                    @if (config is not null)
+                    {
+                        <div class="contact-info-header">
+                            <div class="contact-brand-mono">LE</div>
+                            <div>
+                                <div class="contact-brand-name">@config.NombreEstudio</div>
+                                @if (!string.IsNullOrWhiteSpace(config.Slogan))
+                                {
+                                    <div class="contact-brand-slogan">@config.Slogan</div>
+                                }
+                            </div>
+                        </div>
+                        <div class="contact-info-divider"></div>
+                    }
+
+                    <div class="contact-info-items">
+                        @if (!string.IsNullOrWhiteSpace(config?.TelefonoContacto))
+                        {
+                            <div class="contact-info-item">
+                                <div class="contact-info-icon">
+                                    <i class="bi bi-telephone-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="contact-info-label">Teléfono</div>
+                                    <div class="contact-info-value">@config.TelefonoContacto</div>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(config?.EmailContacto))
+                        {
+                            <div class="contact-info-item">
+                                <div class="contact-info-icon">
+                                    <i class="bi bi-envelope-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="contact-info-label">Correo electrónico</div>
+                                    <div class="contact-info-value">@config.EmailContacto</div>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(config?.Direccion))
+                        {
+                            <div class="contact-info-item">
+                                <div class="contact-info-icon">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                </div>
+                                <div>
+                                    <div class="contact-info-label">Dirección</div>
+                                    <div class="contact-info-value">@config.Direccion</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (urlMapa is not null)
+                    {
+                        <div class="contact-map-wrap">
+                            <iframe src="@urlMapa"
+                                    width="100%"
+                                    height="260"
+                                    style="border:0; border-radius:12px; display:block;"
+                                    allowfullscreen
+                                    loading="lazy"
+                                    referrerpolicy="no-referrer-when-downgrade">
+                            </iframe>
+                            @if (config?.MapLatitude.HasValue == true)
+                            {
+                                <a class="contact-map-link"
+                                   href="https://www.openstreetmap.org/?mlat=@config.MapLatitude&mlon=@config.MapLongitude#map=16/@config.MapLatitude/@config.MapLongitude"
+                                   target="_blank" rel="noopener">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Ver en mapa completo
+                                </a>
+                            }
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<style>
+    .contact-success {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        background: #F0FDF4;
+        border: 1px solid #86EFAC;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .contact-success-icon {
+        font-size: 1.75rem;
+        color: #16A34A;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    .contact-success-title {
+        font-weight: 700;
+        color: #14532D;
+        font-size: 1.05rem;
+    }
+
+    .contact-success-sub {
+        color: #166534;
+        font-size: .875rem;
+        margin-top: .25rem;
+    }
+
+    .contact-info-card {
+        background: var(--navy,#0B1F3A);
+        border-radius: 16px;
+        padding: 1.75rem;
+        color: #fff;
+        height: 100%;
+    }
+
+    .contact-info-header {
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+    }
+
+    .contact-brand-mono {
+        width: 46px;
+        height: 46px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: rgba(184,150,62,.2);
+        border: 1px solid rgba(184,150,62,.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: Georgia,serif;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--gold-light,#D4AF6A);
+    }
+
+    .contact-brand-name {
+        font-family: Georgia,serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .contact-brand-slogan {
+        font-size: .8rem;
+        color: rgba(255,255,255,.55);
+        font-style: italic;
+    }
+
+    .contact-info-divider {
+        height: 1px;
+        background: rgba(255,255,255,.1);
+        margin: 1.25rem 0;
+    }
+
+    .contact-info-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .contact-info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: .875rem;
+    }
+
+    .contact-info-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: rgba(184,150,62,.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gold-light,#D4AF6A);
+        font-size: .9rem;
+    }
+
+    .contact-info-label {
+        font-size: .7rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: rgba(255,255,255,.4);
+    }
+
+    .contact-info-value {
+        font-size: .9rem;
+        color: rgba(255,255,255,.85);
+        margin-top: .1rem;
+    }
+
+    .contact-map-wrap {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .contact-map-link {
+        display: block;
+        text-align: center;
+        font-size: .78rem;
+        color: rgba(255,255,255,.5);
+        margin-top: .625rem;
+        text-decoration: none;
+        transition: color 150ms;
+    }
+
+        .contact-map-link:hover {
+            color: var(--gold-light,#D4AF6A);
+        }
+</style>
+
+@code {
+    private LamillaEscudero.Application.Models.Consultas.ConsultaWebCreateRequest form = new();
+    private string? mensaje;
+    private bool enviando;
+
+    private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? config;
+    private string? urlMapa;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            config = await ConfigService.GetAsync();
+            urlMapa = ResolverUrlMapa(config);
+        }
+        catch
+        {
+            // Si hay error en BD, el mapa no se muestra
+        }
+    }
+
+    private static string? ResolverUrlMapa(
+        LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? c)
+    {
+        if (c is null) return null;
+
+        if (!string.IsNullOrWhiteSpace(c.MapEmbedUrl))
+            return c.MapEmbedUrl;
+
+        if (c.MapLatitude.HasValue && c.MapLongitude.HasValue)
+        {
+            var lat = c.MapLatitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+            var lon = c.MapLongitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
+            return $"https://www.openstreetmap.org/export/embed.html" +
+                   $"?bbox={lon}&layer=mapnik&marker={lat}%2C{lon}";
+        }
+
+        return null;
+    }
+
+    private async Task Enviar()
+    {
+        enviando = true;
+        var resp = await ConsultaService.CreateAsync(form);
+        mensaje = resp is not null
+            ? "Su consulta fue enviada correctamente. Pronto le contactaremos."
+            : "Ocurrió un error al enviar. Por favor intente nuevamente.";
+        if (resp is not null) form = new();
+        enviando = false;
+    }
+}
