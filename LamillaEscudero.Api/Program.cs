@@ -1,10 +1,12 @@
 ﻿using System.Text;
 using Hangfire;
+using Hangfire.PostgreSql;
 using LamillaEscudero.Infrastructure;
 using LamillaEscudero.Infrastructure.Seed;
+using LamillaEscudero.Application.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Hangfire.PostgreSql; // <--- ¡AGREGA ESTA LÍNEA AQUÍ!
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -16,13 +18,11 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("ConnectionString no configurada.");
 
-// 👇 CONFIGURACIÓN DE HANGFIRE 👇
-// 👇 NUEVA CONFIGURACIÓN DE HANGFIRE PARA POSTGRES 👇
+// 👇 CONFIGURACIÓN DE HANGFIRE PARA POSTGRES 👇
 builder.Services.AddHangfire(config =>
 {
     config.UseSimpleAssemblyNameTypeSerializer()
           .UseRecommendedSerializerSettings()
-          // ¡Cambiamos UseSqlServerStorage por UsePostgreSqlStorage!
           .UsePostgreSqlStorage(connectionString);
 });
 builder.Services.AddHangfireServer();
@@ -65,7 +65,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // ==========================================
-// 👇 BLOQUE TRY-CATCH PARA ATRAPAR EL ERROR 👇
+// CONSTRUCCIÓN DE LA APLICACIÓN
 // ==========================================
 WebApplication app;
 try
@@ -74,19 +74,19 @@ try
 }
 catch (System.Reflection.ReflectionTypeLoadException ex)
 {
-    // Esto va a extraer el error real que está oculto
     var erroresReales = string.Join("\n", ex.LoaderExceptions.Select(e => e?.Message));
     throw new Exception($"\n=== ERROR REAL DETECTADO ===\n{erroresReales}\n===========================\n", ex);
 }
-// ==========================================
 
+// Swagger solo en desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    // 👇 DASHBOARD DE HANGFIRE (Se ve en /hangfire) 👇
-    app.UseHangfireDashboard("/hangfire");
 }
+
+// 👇 DASHBOARD DE HANGFIRE (Afuera del IsDevelopment para que puedas verlo en Render)
+app.UseHangfireDashboard("/hangfire");
 
 await DbSeeder.SeedAsync(app.Services);
 
@@ -97,10 +97,19 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// 👇 TAREA PROGRAMADA DIARIA 👇
-RecurringJob.AddOrUpdate<LamillaEscudero.Application.Abstractions.IAutomationService>(
-    "recordatorios-diarios",
-    x => x.EjecutarAsync(CancellationToken.None),
-    Cron.Daily);
+// ==========================================
+// 👇 SOLUCIÓN AL ERROR DE RENDER 👇
+// Inyectamos el servicio correctamente en lugar de usar la clase estática
+// ==========================================
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
-app.Run(); ;
+    recurringJobManager.AddOrUpdate<IAutomationService>(
+        "recordatorios-diarios",
+        x => x.EjecutarAsync(CancellationToken.None),
+        Cron.Daily() // Importante: usar los paréntesis ()
+    );
+}
+
+app.Run();
