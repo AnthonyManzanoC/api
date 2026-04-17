@@ -143,7 +143,7 @@
 }
 
 @* ════════════════════════════════════════════════════════════════
-   HERO — patrón flotante + badge pulso + scroll indicator
+   HERO
    ════════════════════════════════════════════════════════════════ *@
 <section class="hero-section hero-v2" id="inicio">
     <div class="hero-geo-pattern" aria-hidden="true"></div>
@@ -177,16 +177,22 @@
                         <span class="btn-hero-glow"></span>
                         <i class="bi bi-chat-text me-2"></i>Consulta gratuita
                     </a>
-                    <a href="/servicios" class="btn-hero-secondary">
-                        <i class="bi bi-grid me-2"></i>Nuestros servicios
+                    <a href="#nosotros" class="btn-hero-secondary">
+                        <i class="bi bi-play-circle me-2"></i>Conócenos
                     </a>
                 </div>
                 <div class="hero-stats-bar">
-                    <div class="hero-stat"><strong>+15</strong><span>Años</span></div>
+                    <div class="hero-stat">
+                        <strong class="counter" data-target="15">0</strong><span>Años</span>
+                    </div>
                     <div class="hero-stat-div"></div>
-                    <div class="hero-stat"><strong>+500</strong><span>Casos</span></div>
+                    <div class="hero-stat">
+                        <strong class="counter" data-target="500">0</strong><span>Casos</span>
+                    </div>
                     <div class="hero-stat-div"></div>
-                    <div class="hero-stat"><strong>100%</strong><span>Compromiso</span></div>
+                    <div class="hero-stat">
+                        <strong class="counter" data-target="98" data-suffix="%">0</strong><span>Satisfacción</span>
+                    </div>
                 </div>
             </div>
             <div class="hero-contact-card">
@@ -236,9 +242,90 @@
             </div>
         </div>
     </div>
-    <a href="#servicios" class="hero-scroll-indicator" aria-label="Ir a servicios">
+    <div class="hero-wave" aria-hidden="true">
+        <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#F8F6F1" />
+        </svg>
+    </div>
+    <a href="#nosotros" class="hero-scroll-indicator" aria-label="Ir a nosotros">
         <i class="bi bi-chevron-down"></i>
     </a>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   ABOUT — nueva sección
+   ════════════════════════════════════════════════════════════════ *@
+<section class="about-section" id="nosotros">
+    <div class="container">
+        <div class="about-grid">
+            @* Imagen con badge de experiencia *@
+            <div class="about-image-col reveal">
+                <div class="about-img-frame">
+                    @if (config is not null && (!string.IsNullOrWhiteSpace(config.PhotoUrl) || !string.IsNullOrWhiteSpace(config.LogoUrl)))
+                    {
+                        <img src="@(!string.IsNullOrWhiteSpace(config.PhotoUrl) ? config.PhotoUrl : config.LogoUrl)"
+                             alt="@(config?.NombreEstudio ?? "Estudio")"
+                             class="about-img" />
+                    }
+                    else
+                    {
+                        <div class="about-img-placeholder">
+                            <i class="bi bi-building"></i>
+                            <span>@(config?.NombreEstudio ?? "Lamilla Escudero & Asociados")</span>
+                        </div>
+                    }
+                    <div class="about-exp-badge">
+                        <span class="about-exp-num">15<sup>+</sup></span>
+                        <span class="about-exp-label">Años de<br>experiencia</span>
+                    </div>
+                </div>
+            </div>
+
+            @* Contenido textual *@
+            <div class="about-content-col reveal">
+                <span class="section-eyebrow">Sobre nosotros</span>
+                <h2 class="about-title">
+                    Juristas de trayectoria<br />y capacidad comprobada
+                </h2>
+                <div class="about-accent-line"></div>
+                <p class="about-text">
+                    Con sólida formación académica y amplia experiencia en el ejercicio del derecho,
+                    el equipo de <strong>Lamilla Escudero &amp; Asociados</strong> se ha destacado
+                    por su capacidad analítica, visión estratégica y compromiso inquebrantable
+                    con la justicia.
+                </p>
+                <p class="about-text">
+                    Nuestra práctica en <strong>Babahoyo</strong> se caracteriza por la atención
+                    personalizada, el análisis profundo de cada caso y la búsqueda constante de
+                    soluciones que protegen los intereses de nuestros clientes con la máxima
+                    excelencia técnica y ética profesional.
+                </p>
+                <div class="about-features-grid">
+                    <div class="about-feature-item">
+                        <i class="bi bi-check-circle-fill"></i><span>Atención personalizada</span>
+                    </div>
+                    <div class="about-feature-item">
+                        <i class="bi bi-check-circle-fill"></i><span>Equipo especializado</span>
+                    </div>
+                    <div class="about-feature-item">
+                        <i class="bi bi-check-circle-fill"></i><span>Confidencialidad total</span>
+                    </div>
+                    <div class="about-feature-item">
+                        <i class="bi bi-check-circle-fill"></i><span>Resultados comprobados</span>
+                    </div>
+                    <div class="about-feature-item">
+                        <i class="bi bi-check-circle-fill"></i><span>Ética profesional</span>
+                    </div>
+                    <div class="about-feature-item">
+                        <i class="bi bi-check-circle-fill"></i><span>Primera consulta gratis</span>
+                    </div>
+                </div>
+                <a href="/contacto" class="btn-about-cta">
+                    <i class="bi bi-arrow-right-circle me-2"></i>Hablar con un abogado
+                </a>
+            </div>
+        </div>
+    </div>
 </section>
 
 @* ════════════════════════════════════════════════════════════════
@@ -264,8 +351,8 @@
                 {
                     <div class="practice-card @(s.Featured ? "practice-card-featured" : "") practice-card-v2 reveal">
                         <div class="practice-card-inner">
-                            <div class="practice-icon-wrap">
-                                <i class="bi @s.Icono practice-icon"></i>
+                            <div class="practice-icon-circle">
+                                <i class="bi @s.Icono"></i>
                             </div>
                             <h3 class="practice-name">@s.Titulo</h3>
                             <p class="practice-desc">@s.Desc</p>
@@ -283,8 +370,8 @@
                     <div class="practice-card @(idx == 1 ? "practice-card-featured" : "") practice-card-interactive practice-card-v2 reveal"
                          @onclick="() => ToggleServicio(s.Id)">
                         <div class="practice-card-inner">
-                            <div class="practice-icon-wrap">
-                                <i class="bi @(s.Icono ?? "bi-briefcase") practice-icon"></i>
+                            <div class="practice-icon-circle">
+                                <i class="bi @(s.Icono ?? "bi-briefcase")"></i>
                             </div>
                             <h3 class="practice-name">@s.Titulo</h3>
                             <p class="practice-desc">@s.DescripcionCorta</p>
@@ -311,7 +398,7 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   ¿POR QUÉ ELEGIRNOS?  — nueva sección
+   ¿POR QUÉ ELEGIRNOS?
    ════════════════════════════════════════════════════════════════ *@
 <section class="why-section">
     <div class="container">
@@ -358,9 +445,9 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   TRAYECTORIA / QUIÉNES SOMOS
+   TRAYECTORIA
    ════════════════════════════════════════════════════════════════ *@
-<section class="trayectoria-section trayectoria-v2" id="nosotros">
+<section class="trayectoria-section trayectoria-v2">
     <div class="trayectoria-bg-lines"></div>
     <div class="container">
         <div class="trayectoria-inner">
@@ -464,6 +551,12 @@
                                             <i class="bi bi-linkedin me-1"></i>LinkedIn
                                         </a>
                                     }
+                                    @if (!string.IsNullOrWhiteSpace(m.Email))
+                                    {
+                                        <a href="mailto:@m.Email" class="team-linkedin team-email-link" @onclick:stopPropagation>
+                                            <i class="bi bi-envelope-fill me-1"></i>Email
+                                        </a>
+                                    }
                                     <button class="team-btn-overlay" @onclick="() => AbrirOverlay(m)" @onclick:stopPropagation>
                                         <i class="bi bi-person-badge me-1"></i>Ver perfil completo
                                     </button>
@@ -479,6 +572,76 @@
         </div>
     </section>
 }
+
+@* ════════════════════════════════════════════════════════════════
+   TESTIMONIOS
+   ════════════════════════════════════════════════════════════════ *@
+<section class="testimonials-section">
+    <div class="container">
+        <div class="section-header reveal">
+            <span class="section-eyebrow" style="color:var(--gold-light);">Lo que dicen</span>
+            <h2 class="section-title" style="color:var(--white);">Lo que dicen nuestros clientes</h2>
+            <div class="section-title-line"></div>
+            <p class="section-subtitle" style="color:rgba(255,255,255,.55);">La confianza de nuestros clientes es nuestro mayor logro.</p>
+        </div>
+        <div class="testimonials-grid">
+            <div class="testimonial-card reveal">
+                <div class="tc-stars">
+                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                </div>
+                <p class="tc-quote">
+                    "Excelente atención desde el primer momento. Resolvieron mi caso con profesionalismo
+                    y estrategia clara. Los resultados superaron mis expectativas. Los recomiendo totalmente."
+                </p>
+                <div class="tc-author">
+                    <div class="tc-author-avatar">MC</div>
+                    <div>
+                        <strong class="tc-author-name">María Cárdenas</strong>
+                        <span class="tc-author-case">Caso de Derecho Civil</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card reveal">
+                <div class="tc-stars">
+                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                </div>
+                <p class="tc-quote">
+                    "Gracias al equipo de Lamilla Escudero logré obtener la resolución favorable
+                    que necesitaba. Su conocimiento del derecho local fue determinante en el resultado."
+                </p>
+                <div class="tc-author">
+                    <div class="tc-author-avatar">RV</div>
+                    <div>
+                        <strong class="tc-author-name">Roberto Vera</strong>
+                        <span class="tc-author-case">Caso Laboral</span>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card reveal">
+                <div class="tc-stars">
+                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+                    <i class="bi bi-star-fill"></i>
+                </div>
+                <p class="tc-quote">
+                    "Claridad, honestidad y dedicación en cada etapa del proceso. Me asesoraron
+                    perfectamente en un momento muy difícil. Sin dudas, los mejores abogados de la región."
+                </p>
+                <div class="tc-author">
+                    <div class="tc-author-avatar">LP</div>
+                    <div>
+                        <strong class="tc-author-name">Laura Peñafiel</strong>
+                        <span class="tc-author-case">Caso de Familia</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
 @* ════════════════════════════════════════════════════════════════
    VALORES
@@ -511,20 +674,21 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   CTA FINAL
+   CTA FINAL — con banda dorada
    ════════════════════════════════════════════════════════════════ *@
-<section class="cta-final-section cta-final-v2">
-    <div class="cta-bg-shape"></div>
+<section class="cta-gold-band">
+    <div class="cta-gold-bg-shape"></div>
     <div class="container">
-        <div class="cta-final-inner reveal">
-            <span class="cta-eyebrow">¿Necesitas asesoramiento legal?</span>
-            <h2 class="cta-final-title">Primera consulta sin costo</h2>
-            <p class="cta-final-sub">Cuéntanos tu situación y te orientaremos con honestidad y precisión.</p>
-            <div class="cta-actions">
-                <a href="/contacto" class="btn-cta-final">
-                    <i class="bi bi-send-fill me-2"></i>Solicitar consulta gratuita
+        <div class="cta-gold-inner reveal">
+            <div class="cta-gold-text">
+                <h2 class="cta-gold-title">¿Necesitas asesoramiento legal?</h2>
+                <p class="cta-gold-sub">Primera consulta sin costo. No espere más para proteger sus derechos.</p>
+            </div>
+            <div class="cta-gold-actions">
+                <a href="/contacto" class="btn-cta-white">
+                    <i class="bi bi-send-fill me-2"></i>Solicitar consulta
                 </a>
-                <a href="/contacto" class="btn-cta-secondary">
+                <a href="/contacto" class="btn-cta-outline-white">
                     <i class="bi bi-telephone-fill me-2"></i>Llamar ahora
                 </a>
             </div>
@@ -533,11 +697,18 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   ESTILOS FUSIÓN
+   FLOTANTES — Scroll to top
+   ════════════════════════════════════════════════════════════════ *@
+<button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba">
+    <i class="bi bi-chevron-up"></i>
+</button>
+
+@* ════════════════════════════════════════════════════════════════
+   ESTILOS
    ════════════════════════════════════════════════════════════════ *@
 <style>
 
-    /* ══ SCROLL REVEAL (IntersectionObserver) ════════════════════════ */
+    /* ══ SCROLL REVEAL ══════════════════════════════════════════════ */
     .reveal {
         opacity: 0;
         transform: translateY(38px);
@@ -555,7 +726,6 @@
         overflow: hidden;
     }
 
-    /* Patrón geométrico flotante (del modelo HTML) */
     .hero-geo-pattern {
         position: absolute;
         inset: 0;
@@ -583,7 +753,21 @@
         background-image: radial-gradient(circle at 80% 20%, rgba(184,150,62,.07) 0%, transparent 50%), radial-gradient(circle at 15% 75%, rgba(11,31,58,.06) 0%, transparent 50%);
     }
 
-    /* Badge pulso — ubicación (del modelo HTML) */
+    .hero-wave {
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        z-index: 3;
+        line-height: 0;
+    }
+
+        .hero-wave svg {
+            width: 100%;
+            height: 80px;
+            display: block;
+        }
+
     .hero-pulse-badge {
         display: inline-flex;
         align-items: center;
@@ -720,7 +904,6 @@
             color: var(--navy);
         }
 
-    /* Contact card */
     .hcc-accent {
         height: 3px;
         background: linear-gradient(90deg, var(--gold), var(--gold-light));
@@ -753,7 +936,7 @@
         transition: all var(--transition);
         border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     }
-        /* translateX al hover (del modelo HTML) */
+
         .hcc-item:hover {
             border-left-color: var(--gold);
             background: rgba(184,150,62,.05);
@@ -778,10 +961,9 @@
         margin-bottom: 1rem;
     }
 
-    /* Scroll indicator bouncing (del modelo HTML) */
     .hero-scroll-indicator {
         position: absolute;
-        bottom: 1.75rem;
+        bottom: 5.5rem;
         left: 50%;
         transform: translateX(-50%);
         color: var(--gold);
@@ -822,7 +1004,204 @@
         }
     }
 
-    /* ══ PRACTICE V2 ════════════════════════════════════════════════ */
+    /* ══ ABOUT SECTION ══════════════════════════════════════════════ */
+    .about-section {
+        padding: 6rem 0;
+        background: var(--white);
+        overflow: hidden;
+    }
+
+    .about-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.1fr;
+        gap: 5rem;
+        align-items: center;
+    }
+
+    .about-img-frame {
+        position: relative;
+        border-radius: var(--radius-xl);
+        overflow: visible;
+        transition: transform var(--transition);
+    }
+
+        .about-img-frame::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: 20px;
+            bottom: 20px;
+            border: 3px solid var(--gold);
+            border-radius: var(--radius-xl);
+            z-index: 0;
+            opacity: .35;
+            transition: top var(--transition), left var(--transition);
+        }
+
+        .about-img-frame:hover::before {
+            top: 20px;
+            left: 20px;
+        }
+
+    .about-img {
+        width: 100%;
+        height: 480px;
+        object-fit: cover;
+        border-radius: var(--radius-xl);
+        position: relative;
+        z-index: 1;
+        filter: grayscale(15%);
+        transition: filter var(--transition), box-shadow var(--transition);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .about-img-frame:hover .about-img {
+        filter: grayscale(0%);
+        box-shadow: var(--shadow-xl);
+    }
+
+    .about-img-placeholder {
+        width: 100%;
+        height: 480px;
+        border-radius: var(--radius-xl);
+        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        color: rgba(255,255,255,.5);
+        position: relative;
+        z-index: 1;
+        box-shadow: var(--shadow-lg);
+    }
+
+        .about-img-placeholder i {
+            font-size: 3rem;
+            color: var(--gold);
+            opacity: .5;
+        }
+
+        .about-img-placeholder span {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            text-align: center;
+            padding: 0 2rem;
+        }
+
+    .about-exp-badge {
+        position: absolute;
+        bottom: -20px;
+        right: -20px;
+        background: var(--gold);
+        color: white;
+        padding: 1.5rem 1.75rem;
+        border-radius: var(--radius-lg);
+        text-align: center;
+        z-index: 2;
+        box-shadow: 0 12px 32px rgba(184,150,62,.4);
+        animation: badgePulse 3s ease-in-out infinite;
+    }
+
+    @@keyframes badgePulse {
+        0%, 100% {
+            box-shadow: 0 12px 32px rgba(184,150,62,.4);
+        }
+
+        50% {
+            box-shadow: 0 16px 40px rgba(184,150,62,.6);
+        }
+    }
+
+    .about-exp-num {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        font-weight: 700;
+        line-height: 1;
+        color: white;
+    }
+
+        .about-exp-num sup {
+            font-size: 1.1rem;
+        }
+
+    .about-exp-label {
+        display: block;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        color: rgba(255,255,255,.85);
+        margin-top: .3rem;
+        line-height: 1.35;
+    }
+
+    .about-title {
+        font-family: var(--font-display);
+        font-size: 2.25rem;
+        font-weight: 600;
+        color: var(--navy);
+        line-height: 1.2;
+        margin: .5rem 0 0;
+    }
+
+    .about-accent-line {
+        width: 48px;
+        height: 3px;
+        background: var(--gold);
+        margin: 1.25rem 0;
+    }
+
+    .about-text {
+        font-size: .975rem;
+        color: var(--silver);
+        line-height: 1.8;
+        margin-bottom: 1rem;
+    }
+
+    .about-features-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .625rem 1.5rem;
+        margin: 1.75rem 0;
+    }
+
+    .about-feature-item {
+        display: flex;
+        align-items: center;
+        gap: .625rem;
+        font-size: .875rem;
+        color: var(--charcoal);
+    }
+
+        .about-feature-item i {
+            color: var(--gold);
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+    .btn-about-cta {
+        display: inline-flex;
+        align-items: center;
+        background: var(--navy);
+        color: white;
+        padding: .8rem 1.75rem;
+        border-radius: var(--radius-md);
+        font-size: .9rem;
+        font-weight: 500;
+        transition: transform 100ms, box-shadow var(--transition), background var(--transition);
+        box-shadow: 0 4px 16px rgba(11,31,58,.22);
+    }
+
+        .btn-about-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(11,31,58,.3);
+            background: var(--gold);
+            color: white;
+        }
+
+    /* ══ SERVICES — circular icon ═══════════════════════════════════ */
     .section-title-line {
         width: 48px;
         height: 3px;
@@ -835,7 +1214,7 @@
         position: relative;
         overflow: hidden;
     }
-        /* Shimmer sweep (del modelo HTML) */
+
         .practice-card-v2::before {
             content: '';
             position: absolute;
@@ -851,22 +1230,23 @@
         .practice-card-v2:hover::before {
             left: 100%;
         }
-        /* Top border gold */
+
         .practice-card-v2::after {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, var(--gold), transparent);
-            opacity: 0;
-            transition: opacity var(--transition);
+            height: 4px;
+            background: var(--gold);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform .35s ease;
             z-index: 1;
         }
 
         .practice-card-v2:hover::after {
-            opacity: 1;
+            transform: scaleX(1);
         }
 
         .practice-card-v2 .practice-card-inner {
@@ -874,29 +1254,40 @@
             z-index: 1;
         }
 
-    .practice-icon-wrap {
-        width: 54px;
-        height: 54px;
-        border-radius: var(--radius-md);
-        background: linear-gradient(135deg, rgba(11,31,58,.05), rgba(184,150,62,.12));
+    .practice-icon-circle {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: var(--ivory);
+        border: 2px solid var(--light-gray);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 1.25rem;
-        transition: background var(--transition), transform var(--transition);
+        margin: 0 auto 1.25rem;
+        font-size: 1.6rem;
+        color: var(--gold);
+        transition: background var(--transition), border-color var(--transition), transform var(--transition);
     }
 
-    .practice-card-v2:hover .practice-icon-wrap {
-        background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-        transform: scale(1.08);
+    .practice-card-v2:hover .practice-icon-circle {
+        background: var(--gold);
+        border-color: var(--gold);
+        color: white;
+        transform: scale(1.08) rotate(-5deg);
     }
 
-    .practice-card-v2:hover .practice-icon {
-        color: var(--gold-light);
-    }
-
-    .practice-card-featured .practice-icon-wrap {
+    .practice-card-featured .practice-icon-circle {
         background: rgba(184,150,62,.15);
+        border-color: rgba(184,150,62,.3);
+    }
+
+    .practice-card-featured:hover .practice-icon-circle {
+        background: var(--gold-light);
+        color: var(--navy);
+    }
+
+    .practice-card-v2 {
+        text-align: center;
     }
 
     .btn-outline-hero-v2 {
@@ -931,7 +1322,6 @@
         position: relative;
         overflow: hidden;
         transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
-        cursor: default;
     }
 
         .why-feature:hover {
@@ -939,7 +1329,7 @@
             box-shadow: var(--shadow-lg);
             border-color: var(--gold);
         }
-    /* Número de fondo grande (del modelo HTML) */
+
     .why-feature-bg-num {
         position: absolute;
         top: -10px;
@@ -1000,7 +1390,7 @@
         margin: 0;
     }
 
-    /* ══ TRAYECTORIA V2 ═════════════════════════════════════════════ */
+    /* ══ TRAYECTORIA ════════════════════════════════════════════════ */
     .trayectoria-v2 {
         position: relative;
         overflow: hidden;
@@ -1025,7 +1415,7 @@
         border: 1px solid rgba(255,255,255,.1);
         border-radius: var(--radius-xl);
     }
-    /* Stats con línea indicadora (mejorado) */
+
     .stat-item-v3 {
         text-align: center;
         position: relative;
@@ -1045,7 +1435,7 @@
         border-radius: 1px;
     }
 
-    /* ══ TEAM V2 ════════════════════════════════════════════════════ */
+    /* ══ TEAM ════════════════════════════════════════════════════════ */
     .team-v2 {
         background: var(--ivory);
     }
@@ -1145,6 +1535,147 @@
             background: var(--gold);
         }
 
+    .team-email-link {
+        display: inline-flex;
+        align-items: center;
+        font-size: .78rem;
+        color: var(--charcoal);
+        padding: .25rem .625rem;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--light-gray);
+        background: var(--ivory);
+        transition: all var(--transition);
+    }
+
+        .team-email-link:hover {
+            background: var(--navy);
+            color: white;
+            border-color: var(--navy);
+        }
+
+    /* ══ TESTIMONIALS ═══════════════════════════════════════════════ */
+    .testimonials-section {
+        padding: 6rem 0;
+        background: var(--navy);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .testimonials-section::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 2L58 30L30 58L2 30Z' fill='none' stroke='%23B8963E' stroke-opacity='0.04' stroke-width='1'/%3E%3C/svg%3E");
+        }
+
+    .testimonials-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-top: 3rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .testimonial-card {
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem 2rem;
+        transition: all var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+        .testimonial-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .testimonial-card:hover::before {
+            opacity: 1;
+        }
+
+        .testimonial-card:hover {
+            background: rgba(255,255,255,.09);
+            transform: translateY(-6px);
+            border-color: rgba(184,150,62,.3);
+            box-shadow: 0 16px 40px rgba(0,0,0,.25);
+        }
+
+    .tc-stars {
+        color: var(--gold);
+        font-size: .9rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        gap: .2rem;
+    }
+
+    .tc-quote {
+        font-style: italic;
+        font-size: .925rem;
+        color: rgba(255,255,255,.75);
+        line-height: 1.8;
+        margin-bottom: 1.75rem;
+        position: relative;
+    }
+
+        .tc-quote::before {
+            content: '\201C';
+            font-family: var(--font-display);
+            font-size: 4rem;
+            color: var(--gold);
+            opacity: .25;
+            position: absolute;
+            top: -1rem;
+            left: -0.5rem;
+            line-height: 1;
+        }
+
+    .tc-author {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .tc-author-avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, var(--gold), var(--gold-light));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--navy);
+        border: 2px solid rgba(184,150,62,.5);
+    }
+
+    .tc-author-name {
+        display: block;
+        font-size: .9rem;
+        font-weight: 600;
+        color: var(--white);
+    }
+
+    .tc-author-case {
+        display: block;
+        font-size: .75rem;
+        color: var(--gold-light);
+        margin-top: .1rem;
+    }
+
     /* ══ VALUES V2 ══════════════════════════════════════════════════ */
     .value-item-v2 {
         transition: transform var(--transition);
@@ -1174,83 +1705,95 @@
         transform: scale(1.12);
     }
 
-    /* ══ CTA FINAL V2 ═══════════════════════════════════════════════ */
-    .cta-final-v2 {
+    /* ══ CTA GOLD BAND ═════════════════════════════════════════════ */
+    .cta-gold-band {
+        padding: 5rem 0;
+        background: linear-gradient(135deg, var(--gold) 0%, #a07830 100%);
         position: relative;
         overflow: hidden;
     }
 
-    .cta-bg-shape {
+    .cta-gold-bg-shape {
         position: absolute;
-        top: -60px;
-        right: -60px;
-        width: 320px;
-        height: 320px;
+        top: -80px;
+        right: -80px;
+        width: 350px;
+        height: 350px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(184,150,62,.14), transparent 70%);
+        background: rgba(255,255,255,.08);
         pointer-events: none;
     }
 
-    .cta-eyebrow {
-        display: block;
-        font-size: .75rem;
-        font-weight: 600;
-        letter-spacing: .15em;
-        text-transform: uppercase;
-        color: var(--gold);
-        margin-bottom: .75rem;
-    }
-
-    .cta-final-title {
-        font-family: var(--font-display);
-        font-size: 2.75rem;
-        font-weight: 600;
-        color: var(--navy);
-        margin-bottom: .75rem;
-    }
-
-    .cta-actions {
+    .cta-gold-inner {
         display: flex;
-        gap: 1rem;
-        justify-content: center;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
         flex-wrap: wrap;
     }
 
-    .btn-cta-final {
+    .cta-gold-text {
+        flex: 1;
+        min-width: 280px;
+    }
+
+    .cta-gold-title {
+        font-family: var(--font-display);
+        font-size: 2.25rem;
+        font-weight: 600;
+        color: var(--white);
+        margin-bottom: .5rem;
+    }
+
+    .cta-gold-sub {
+        font-size: 1rem;
+        color: rgba(255,255,255,.85);
+    }
+
+    .cta-gold-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-cta-white {
         display: inline-flex;
         align-items: center;
         background: var(--navy);
         color: white;
-        padding: .9rem 2.25rem;
+        padding: .875rem 2rem;
         border-radius: var(--radius-md);
         font-size: .95rem;
-        font-weight: 500;
+        font-weight: 600;
         transition: transform 100ms, box-shadow var(--transition);
-        box-shadow: 0 4px 16px rgba(11,31,58,.2);
+        box-shadow: 0 4px 18px rgba(0,0,0,.2);
+        white-space: nowrap;
     }
 
-        .btn-cta-final:hover {
+        .btn-cta-white:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 28px rgba(11,31,58,.3);
+            box-shadow: 0 8px 28px rgba(0,0,0,.3);
             color: white;
         }
 
-    .btn-cta-secondary {
+    .btn-cta-outline-white {
         display: inline-flex;
         align-items: center;
         background: transparent;
-        color: var(--navy);
-        border: 1.5px solid var(--navy);
-        padding: .9rem 2rem;
+        color: white;
+        border: 2px solid rgba(255,255,255,.6);
+        padding: .875rem 2rem;
         border-radius: var(--radius-md);
         font-size: .95rem;
-        font-weight: 500;
+        font-weight: 600;
         transition: all var(--transition);
+        white-space: nowrap;
     }
 
-        .btn-cta-secondary:hover {
-            background: var(--navy);
-            color: white;
+        .btn-cta-outline-white:hover {
+            background: white;
+            color: var(--gold);
+            border-color: white;
         }
 
     /* ══ LOGO HERO ══════════════════════════════════════════════════ */
@@ -1285,6 +1828,39 @@
             transform: translateY(0);
         }
     }
+
+    /* ══ SCROLL TO TOP ═════════════════════════════════════════════ */
+    .scroll-top-btn {
+        position: fixed;
+        bottom: 1.875rem;
+        left: 1.875rem;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--navy);
+        color: white;
+        border: none;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--transition), visibility var(--transition), background var(--transition), transform var(--transition);
+        box-shadow: 0 4px 16px rgba(11,31,58,.25);
+    }
+
+        .scroll-top-btn.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .scroll-top-btn:hover {
+            background: var(--gold);
+            transform: translateY(-3px);
+        }
 
     /* ══ BIO OVERLAY ════════════════════════════════════════════════ */
     .bio-overlay {
@@ -1685,6 +2261,44 @@
         .why-grid {
             grid-template-columns: repeat(2, 1fr);
         }
+
+        .about-grid {
+            grid-template-columns: 1fr;
+            gap: 3rem;
+        }
+
+        .about-img, .about-img-placeholder {
+            height: 360px;
+        }
+
+        .about-exp-badge {
+            bottom: -15px;
+            right: 15px;
+        }
+
+        .cta-gold-inner {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .cta-gold-actions {
+            justify-content: center;
+        }
+
+        .testimonials-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .testimonials-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .cta-gold-actions {
+            flex-direction: column;
+            align-items: center;
+        }
     }
 
     @@media (max-width: 700px) {
@@ -1714,9 +2328,13 @@
             display: none;
         }
 
-        .cta-actions {
-            flex-direction: column;
-            align-items: center;
+        .about-features-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .scroll-top-btn {
+            bottom: 1rem;
+            left: 1rem;
         }
     }
 
@@ -1729,16 +2347,21 @@
             font-size: .72rem;
             padding: .4rem 1rem;
         }
+
+        .cta-gold-title {
+            font-size: 1.75rem;
+        }
     }
 </style>
 
-@* ── IntersectionObserver para reveal al scroll ─────────────────── *@
+@* ── Scripts: reveal, counter, scroll-to-top ────────────────────── *@
 <script>
     (function() {
+        /* ─ IntersectionObserver Reveal ─────────────────────────── */
         function initReveal() {
             var io = new IntersectionObserver(function(entries) {
                 entries.forEach(function(e) {
-                    if (e.isIntersecting) { e.target.classList.add('visible'); }
+                    if (e.isIntersecting) e.target.classList.add('visible');
                 });
             }, { threshold: 0.11, rootMargin: '0px 0px -30px 0px' });
             document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
@@ -1749,6 +2372,40 @@
             initReveal();
         }
         window._revealInit = initReveal;
+
+        /* ─ Counter animation ───────────────────────────────────── */
+        function animateCounters() {
+            document.querySelectorAll('.counter').forEach(function(el) {
+                if (el.dataset.counted) return;
+                var rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    el.dataset.counted = '1';
+                    var target  = parseInt(el.dataset.target, 10);
+                    var suffix  = el.dataset.suffix || '+';
+                    var dur     = 1800;
+                    var start   = performance.now();
+                    function step(ts) {
+                        var p = Math.min((ts - start) / dur, 1);
+                        var eased = 1 - Math.pow(1 - p, 3); /* ease-out-cubic */
+                        var val = Math.floor(eased * target);
+                        el.textContent = (el.dataset.suffix === '%') ? val + '%' : '+' + val;
+                        if (p < 1) requestAnimationFrame(step);
+                        else el.textContent = (el.dataset.suffix === '%') ? target + '%' : '+' + target;
+                    }
+                    requestAnimationFrame(step);
+                }
+            });
+        }
+        window.addEventListener('scroll', animateCounters, { passive: true });
+        animateCounters();
+
+        /* ─ Scroll to top button ────────────────────────────────── */
+        var scrollBtn = document.getElementById('scrollTopBtn');
+        if (scrollBtn) {
+            window.addEventListener('scroll', function() {
+                scrollBtn.classList.toggle('visible', window.scrollY > 500);
+            }, { passive: true });
+        }
     })();
 </script>
 
