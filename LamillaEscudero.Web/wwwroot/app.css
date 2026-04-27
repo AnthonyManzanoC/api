@@ -2397,7 +2397,89 @@ a {
         bottom: 1.5rem;
     }
 }
+/* ════════════════════════════════════════════════════════════
+   FASE 10 — TESTIMONIOS
+   ════════════════════════════════════════════════════════════ */
+.testimonios-section {
+}
 
+.testi-carousel {
+    position: relative;
+    overflow: hidden;
+}
+
+.testi-track {
+    display: flex;
+    transition: transform 500ms ease;
+}
+
+.testi-slide {
+    min-width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
+}
+
+.testi-card {
+    background: var(--white);
+    border: 1.5px solid var(--light-gray);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    max-width: 640px;
+    margin: 0 auto;
+    box-shadow: var(--shadow-md);
+    text-align: center;
+}
+
+.testi-comentario {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-style: italic;
+    color: var(--charcoal);
+    line-height: 1.7;
+    margin: .75rem 0 1.25rem;
+}
+
+.testi-autor {
+    display: flex;
+    align-items: center;
+    gap: .875rem;
+    justify-content: center;
+}
+
+.testi-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: var(--gold-light);
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.testi-dots {
+}
+
+.testi-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--light-gray);
+    border: none;
+    margin: 0 3px;
+    cursor: pointer;
+    transition: background var(--transition), transform var(--transition);
+    padding: 0;
+}
+
+    .testi-dot.active {
+        background: var(--gold);
+        transform: scale(1.3);
+    }
 /* ════════════════════════════════════════════════════════════
    ADMIN — Paneles de CMS (Miembros y Servicios)
    ════════════════════════════════════════════════════════════ */

@@ -18,6 +18,6 @@ public interface IAppDbContext
     DbSet<MiembroEstudio> MiembrosEstudio { get; }
     DbSet<ServicioOfrecido> ServiciosOfrecidos { get; }
       DbSet<Abono> Abonos { get; }
-
+    DbSet<Testimonio> Testimonios { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -1,173 +1,269 @@
 ﻿@page "/contacto"
-@* ✅ INYECCIÓN CORRECTA: Usamos los servicios directos de la arquitectura *@
 @inject LamillaEscudero.Application.Abstractions.IConfiguracionEstudioService ConfigService
 @inject LamillaEscudero.Application.Abstractions.IConsultaWebService ConsultaService
 @rendermode InteractiveServer
 
 <PageTitle>Contacto — Lamilla Escudero</PageTitle>
 
-<section class="contact-section">
+<section class="cx-section">
     <div class="container">
-        <div class="row gy-5">
 
-            <div class="col-lg-6">
-                <span class="section-eyebrow">Estamos para ayudarte</span>
-                <h1 class="section-title mt-2">Envíe su consulta</h1>
-                <p class="text-muted mt-2 mb-4">
-                    Complete el formulario y un miembro del estudio se pondrá en contacto
-                    con usted a la brevedad.
-                </p>
+        @* ── Encabezado de sección ── *@
+        <div class="cx-hero">
+            <span class="cx-eyebrow">Estamos para ayudarte</span>
+            <h1 class="cx-hero-title">Inicie su consulta <span class="cx-title-accent">hoy</span></h1>
+            <p class="cx-hero-sub">
+                Cuéntenos su situación y un especialista del estudio
+                se pondrá en contacto con usted en el menor tiempo posible.
+            </p>
+        </div>
+
+        <div class="row gx-5 gy-5 align-items-stretch">
+
+            @* ═══════════════════════════════
+                 COL IZQ — FORMULARIO PREMIUM
+                 ═══════════════════════════════ *@
+            <div class="col-lg-6 d-flex flex-column">
 
                 @if (!string.IsNullOrWhiteSpace(mensaje))
                 {
-                    <div class="contact-success">
-                        <div class="contact-success-icon">
-                            <i class="bi bi-check-circle-fill"></i>
+                    <div class="cx-success">
+                        <div class="cx-success-ring">
+                            <i class="bi bi-check2"></i>
                         </div>
-                        <div>
-                            <div class="contact-success-title">¡Consulta enviada!</div>
-                            <div class="contact-success-sub">@mensaje</div>
+                        <div class="cx-success-copy">
+                            <p class="cx-success-title">¡Consulta recibida!</p>
+                            <p class="cx-success-sub">@mensaje</p>
                         </div>
                     </div>
                 }
                 else
                 {
-                    <div class="card border-0">
-                        <div class="card-body p-4">
+                    <div class="cx-form-shell flex-grow-1">
+
+                        @* Decorativo: línea lateral dorada *@
+                        <div class="cx-form-accent-bar"></div>
+
+                        <div class="cx-form-inner">
+                            <div class="cx-form-header">
+                                <div class="cx-form-icon"><i class="bi bi-pen-fill"></i></div>
+                                <div>
+                                    <p class="cx-form-label-top">FORMULARIO DE CONSULTA</p>
+                                    <p class="cx-form-desc">Todos los campos marcados con * son obligatorios.</p>
+                                </div>
+                            </div>
+
                             <EditForm Model="form" OnValidSubmit="Enviar">
                                 <DataAnnotationsValidator />
-                                <ValidationSummary class="validation-message mb-3" />
+                                <ValidationSummary class="cx-validation-summary" />
 
-                                <div class="row g-3">
+                                <div class="row g-4">
+
                                     <div class="col-md-6">
-                                        <label class="form-label">Nombre completo *</label>
-                                        <InputText class="form-control" @bind-Value="form.Nombre"
-                                                   placeholder="Su nombre" />
+                                        <div class="cx-field">
+                                            <label class="cx-label">Nombre completo <span class="cx-required">*</span></label>
+                                            <div class="cx-input-wrap">
+                                                <i class="bi bi-person cx-input-icon"></i>
+                                                <InputText class="cx-input" @bind-Value="form.Nombre" placeholder="Su nombre completo" />
+                                            </div>
+                                        </div>
                                     </div>
+
                                     <div class="col-md-6">
-                                        <label class="form-label">Correo electrónico</label>
-                                        <InputText class="form-control" @bind-Value="form.Email"
-                                                   placeholder="correo@ejemplo.com" />
+                                        <div class="cx-field">
+                                            <label class="cx-label">Correo electrónico</label>
+                                            <div class="cx-input-wrap">
+                                                <i class="bi bi-envelope cx-input-icon"></i>
+                                                <InputText class="cx-input" @bind-Value="form.Email" placeholder="correo@ejemplo.com" />
+                                            </div>
+                                        </div>
                                     </div>
+
                                     <div class="col-md-6">
-                                        <label class="form-label">Teléfono</label>
-                                        <InputText class="form-control" @bind-Value="form.Telefono"
-                                                   placeholder="+593 9..." />
+                                        <div class="cx-field">
+                                            <label class="cx-label">Teléfono</label>
+                                            <div class="cx-input-wrap">
+                                                <i class="bi bi-telephone cx-input-icon"></i>
+                                                <InputText class="cx-input" @bind-Value="form.Telefono" placeholder="+593 9..." />
+                                            </div>
+                                        </div>
                                     </div>
+
                                     <div class="col-md-6">
-                                        <label class="form-label">Asunto *</label>
-                                        <InputText class="form-control" @bind-Value="form.Asunto"
-                                                   placeholder="Motivo de consulta" />
+                                        <div class="cx-field">
+                                            <label class="cx-label">Asunto <span class="cx-required">*</span></label>
+                                            <div class="cx-input-wrap">
+                                                <i class="bi bi-tag cx-input-icon"></i>
+                                                <InputText class="cx-input" @bind-Value="form.Asunto" placeholder="Motivo de consulta" />
+                                            </div>
+                                        </div>
                                     </div>
+
                                     <div class="col-12">
-                                        <label class="form-label">Mensaje *</label>
-                                        <InputTextArea class="form-control" rows="5"
-                                                       @bind-Value="form.Mensaje"
-                                                       placeholder="Describa brevemente su situación..." />
+                                        <div class="cx-field">
+                                            <label class="cx-label">Mensaje <span class="cx-required">*</span></label>
+                                            <div class="cx-textarea-wrap">
+                                                <InputTextArea class="cx-textarea" rows="5"
+                                                               @bind-Value="form.Mensaje"
+                                                               placeholder="Describa brevemente su situación o necesidad legal..." />
+                                            </div>
+                                        </div>
                                     </div>
+
                                 </div>
 
-                                <div class="d-flex align-items-center gap-3 mt-4">
-                                    <button class="btn btn-dark" type="submit" disabled="@enviando">
+                                @* CTA + Aviso de privacidad *@
+                                <div class="cx-cta-row">
+                                    <button class="cx-btn-submit" type="submit" disabled="@enviando">
                                         @if (enviando)
                                         {
-                                            <span class="spinner-border spinner-border-sm me-2"></span>
+                                            <span class="cx-spinner"></span>
+                                            <span>Enviando...</span>
                                         }
                                         else
                                         {
-                                            <i class="bi bi-send me-2"></i>
+                                            <i class="bi bi-send-fill"></i>
+                                            <span>Enviar consulta</span>
+                                            <i class="bi bi-arrow-right cx-btn-arrow"></i>
                                         }
-                                        Enviar consulta
                                     </button>
-                                    <p class="text-muted small mb-0">
-                                        <i class="bi bi-lock me-1"></i>Sus datos son confidenciales.
+
+                                    <p class="cx-privacy-note">
+                                        <i class="bi bi-shield-check"></i>
+                                        Sus datos son tratados con absoluta confidencialidad.
                                     </p>
                                 </div>
+
                             </EditForm>
                         </div>
                     </div>
                 }
             </div>
 
-            <div class="col-lg-6">
-                <div class="contact-info-card">
+            @* ═══════════════════════════════
+                 COL DER — TARJETA DE INFORMACIÓN
+                 ═══════════════════════════════ *@
+            <div class="col-lg-6 d-flex flex-column">
+                <div class="cx-info-card flex-grow-1">
 
-                    @if (config is not null)
-                    {
-                        <div class="contact-info-header">
-                            <div class="contact-brand-mono">LE</div>
-                            <div>
-                                <div class="contact-brand-name">@config.NombreEstudio</div>
-                                @if (!string.IsNullOrWhiteSpace(config.Slogan))
-                                {
-                                    <div class="contact-brand-slogan">@config.Slogan</div>
-                                }
-                            </div>
-                        </div>
-                        <div class="contact-info-divider"></div>
-                    }
+                    @* Orbe decorativo *@
+                    <div class="cx-orb cx-orb-1"></div>
+                    <div class="cx-orb cx-orb-2"></div>
 
-                    <div class="contact-info-items">
-                        @if (!string.IsNullOrWhiteSpace(config?.TelefonoContacto))
-                        {
-                            <div class="contact-info-item">
-                                <div class="contact-info-icon">
-                                    <i class="bi bi-telephone-fill"></i>
-                                </div>
-                                <div>
-                                    <div class="contact-info-label">Teléfono</div>
-                                    <div class="contact-info-value">@config.TelefonoContacto</div>
-                                </div>
-                            </div>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(config?.EmailContacto))
-                        {
-                            <div class="contact-info-item">
-                                <div class="contact-info-icon">
-                                    <i class="bi bi-envelope-fill"></i>
-                                </div>
-                                <div>
-                                    <div class="contact-info-label">Correo electrónico</div>
-                                    <div class="contact-info-value">@config.EmailContacto</div>
-                                </div>
-                            </div>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(config?.Direccion))
-                        {
-                            <div class="contact-info-item">
-                                <div class="contact-info-icon">
-                                    <i class="bi bi-geo-alt-fill"></i>
-                                </div>
-                                <div>
-                                    <div class="contact-info-label">Dirección</div>
-                                    <div class="contact-info-value">@config.Direccion</div>
-                                </div>
-                            </div>
-                        }
-                    </div>
+                    <div class="cx-info-inner">
 
-                    @if (urlMapa is not null)
-                    {
-                        <div class="contact-map-wrap">
-                            <iframe src="@urlMapa"
-                                    width="100%"
-                                    height="260"
-                                    style="border:0; border-radius:12px; display:block;"
-                                    allowfullscreen
-                                    loading="lazy"
-                                    referrerpolicy="no-referrer-when-downgrade">
-                            </iframe>
-                            @if (config?.MapLatitude.HasValue == true)
+                        @if (config is not null)
+                        {
+                            <div class="cx-info-brand">
+                                <div class="cx-info-mono">LE</div>
+                                <div>
+                                    <div class="cx-info-firm">@config.NombreEstudio</div>
+                                    @if (!string.IsNullOrWhiteSpace(config.Slogan))
+                                    {
+                                        <div class="cx-info-slogan">@config.Slogan</div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="cx-info-sep"></div>
+                        }
+
+                        <p class="cx-info-section-label">INFORMACIÓN DE CONTACTO</p>
+
+                        <div class="cx-info-items">
+
+                            @if (!string.IsNullOrWhiteSpace(config?.TelefonoContacto))
                             {
-                                <a class="contact-map-link"
-                                   href="https://www.openstreetmap.org/?mlat=@config.MapLatitude&mlon=@config.MapLongitude#map=16/@config.MapLatitude/@config.MapLongitude"
+                                var numero = System.Text.RegularExpressions.Regex.Replace(config.TelefonoContacto, @"\D", "");
+                                var mensajeWp = Uri.EscapeDataString("Hola Abogado Lamilla, me comunico desde su página web para solicitar una consulta...");
+                                <a class="cx-info-item cx-info-link"
+                                   href="https://wa.me/@numero?text=@mensajeWp"
                                    target="_blank" rel="noopener">
-                                    <i class="bi bi-box-arrow-up-right me-1"></i>Ver en mapa completo
+                                    <div class="cx-info-item-icon cx-icon-green">
+                                        <i class="bi bi-whatsapp"></i>
+                                    </div>
+                                    <div class="cx-info-item-body">
+                                        <span class="cx-info-item-label">WhatsApp / Teléfono</span>
+                                        <span class="cx-info-item-value">
+                                            @config.TelefonoContacto
+                                            <i class="bi bi-box-arrow-up-right cx-ext-icon"></i>
+                                        </span>
+                                    </div>
                                 </a>
                             }
-                        </div>
-                    }
 
+                            @if (!string.IsNullOrWhiteSpace(config?.EmailContacto))
+                            {
+                                var asunto = Uri.EscapeDataString("Consulta desde la página web");
+                                var cuerpo = Uri.EscapeDataString("Estimado Abogado,\n\nMe comunico para solicitar información sobre sus servicios legales.\n\nQuedo a la espera de su respuesta.\n\nAtentamente,");
+                                <a class="cx-info-item cx-info-link"
+                                   href="mailto:@config.EmailContacto?subject=@asunto&body=@cuerpo">
+                                    <div class="cx-info-item-icon cx-icon-gold">
+                                        <i class="bi bi-envelope-fill"></i>
+                                    </div>
+                                    <div class="cx-info-item-body">
+                                        <span class="cx-info-item-label">Correo electrónico</span>
+                                        <span class="cx-info-item-value">
+                                            @config.EmailContacto
+                                            <i class="bi bi-box-arrow-up-right cx-ext-icon"></i>
+                                        </span>
+                                    </div>
+                                </a>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(config?.Direccion))
+                            {
+                                <div class="cx-info-item">
+                                    <div class="cx-info-item-icon cx-icon-blue">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </div>
+                                    <div class="cx-info-item-body">
+                                        <span class="cx-info-item-label">Dirección</span>
+                                        <span class="cx-info-item-value">@config.Direccion</span>
+                                    </div>
+                                </div>
+                            }
+
+                        </div>
+
+                        @if (urlMapa is not null)
+                        {
+                            <div class="cx-map-wrap">
+                                <iframe src="@urlMapa"
+                                        width="100%" height="250"
+                                        style="border:0; display:block;"
+                                        allowfullscreen loading="lazy"
+                                        referrerpolicy="no-referrer-when-downgrade">
+                                </iframe>
+                                @if (config?.MapLatitude.HasValue == true)
+                                {
+                                    <a class="cx-map-link"
+                                       href="https://www.openstreetmap.org/?mlat=@config.MapLatitude&mlon=@config.MapLongitude#map=16/@config.MapLatitude/@config.MapLongitude"
+                                       target="_blank" rel="noopener">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>
+                                        Ver mapa completo
+                                    </a>
+                                }
+                            </div>
+                        }
+
+                        @* Sello de confianza *@
+                        <div class="cx-trust-badges">
+                            <div class="cx-trust-item">
+                                <i class="bi bi-shield-lock-fill"></i>
+                                <span>Confidencialidad garantizada</span>
+                            </div>
+                            <div class="cx-trust-item">
+                                <i class="bi bi-clock-fill"></i>
+                                <span>Respuesta en 24 h</span>
+                            </div>
+                            <div class="cx-trust-item">
+                                <i class="bi bi-award-fill"></i>
+                                <span>Asesoría especializada</span>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
 
@@ -176,148 +272,624 @@
 </section>
 
 <style>
-    .contact-success {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-        background: #F0FDF4;
-        border: 1px solid #86EFAC;
-        border-radius: 12px;
-        padding: 1.5rem;
+    /* ═══════════════════════════════════════════════════
+           CONTACTO — Premium UI  (Lamilla Escudero)
+           Adaptado 100% a las variables dinámicas de la aplicación
+           ═══════════════════════════════════════════════════ */
+
+    .cx-section {
+        padding: 5rem 0 6rem;
+        background: var(--ivory);
     }
 
-    .contact-success-icon {
-        font-size: 1.75rem;
-        color: #16A34A;
-        line-height: 1;
-        flex-shrink: 0;
+    /* ── Hero ───────────────────────────────────────── */
+    .cx-hero {
+        text-align: center;
+        margin-bottom: 3.5rem;
     }
 
-    .contact-success-title {
-        font-weight: 700;
-        color: #14532D;
-        font-size: 1.05rem;
-    }
-
-    .contact-success-sub {
-        color: #166534;
-        font-size: .875rem;
-        margin-top: .25rem;
-    }
-
-    .contact-info-card {
-        background: var(--navy,#0B1F3A);
-        border-radius: 16px;
-        padding: 1.75rem;
-        color: #fff;
-        height: 100%;
-    }
-
-    .contact-info-header {
-        display: flex;
-        align-items: center;
-        gap: .875rem;
-    }
-
-    .contact-brand-mono {
-        width: 46px;
-        height: 46px;
-        border-radius: 8px;
-        flex-shrink: 0;
-        background: rgba(184,150,62,.2);
-        border: 1px solid rgba(184,150,62,.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: Georgia,serif;
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: var(--gold-light,#D4AF6A);
-    }
-
-    .contact-brand-name {
-        font-family: Georgia,serif;
-        font-size: 1.05rem;
+    .cx-eyebrow {
+        display: inline-block;
+        font-size: .7rem;
         font-weight: 600;
-        color: #fff;
+        letter-spacing: .16em;
+        text-transform: uppercase;
+        color: var(--gold);
+        background: rgba(184, 150, 62, 0.1); /* Efecto gold-pale dinámico */
+        padding: .35rem 1rem;
+        border-radius: 100px;
+        margin-bottom: 1rem;
     }
 
-    .contact-brand-slogan {
-        font-size: .8rem;
-        color: rgba(255,255,255,.55);
+    .cx-hero-title {
+        font-family: var(--font-display, 'Georgia', serif);
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        font-weight: 700;
+        color: var(--navy);
+        margin: 0 0 .75rem;
+        line-height: 1.1;
+    }
+
+    .cx-title-accent {
+        color: var(--gold);
         font-style: italic;
     }
 
-    .contact-info-divider {
-        height: 1px;
-        background: rgba(255,255,255,.1);
-        margin: 1.25rem 0;
+    .cx-hero-sub {
+        max-width: 500px;
+        margin: 0 auto;
+        font-size: .95rem;
+        color: var(--silver);
+        line-height: 1.7;
     }
 
-    .contact-info-items {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .contact-info-item {
-        display: flex;
-        align-items: flex-start;
-        gap: .875rem;
-    }
-
-    .contact-info-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        background: rgba(184,150,62,.15);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--gold-light,#D4AF6A);
-        font-size: .9rem;
-    }
-
-    .contact-info-label {
-        font-size: .7rem;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-        color: rgba(255,255,255,.4);
-    }
-
-    .contact-info-value {
-        font-size: .9rem;
-        color: rgba(255,255,255,.85);
-        margin-top: .1rem;
-    }
-
-    .contact-map-wrap {
-        border-radius: 12px;
+    /* ── Formulario — contenedor glass ─────────────── */
+    .cx-form-shell {
+        position: relative;
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--light-gray);
+        box-shadow: var(--shadow-md);
         overflow: hidden;
     }
 
-    .contact-map-link {
-        display: block;
-        text-align: center;
-        font-size: .78rem;
-        color: rgba(255,255,255,.5);
-        margin-top: .625rem;
-        text-decoration: none;
-        transition: color 150ms;
+    /* barra lateral dorada */
+    .cx-form-accent-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, var(--gold) 0%, var(--gold-light) 100%);
     }
 
-        .contact-map-link:hover {
-            color: var(--gold-light,#D4AF6A);
+    .cx-form-inner {
+        padding: 2.25rem 2.25rem 2.25rem 2.75rem;
+    }
+
+    .cx-form-header {
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--light-gray);
+    }
+
+    .cx-form-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: var(--radius-sm);
+        background: var(--navy);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gold-light);
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .cx-form-label-top {
+        font-size: .65rem;
+        font-weight: 700;
+        letter-spacing: .12em;
+        color: var(--gold);
+        margin: 0 0 .15rem;
+    }
+
+    .cx-form-desc {
+        font-size: .78rem;
+        color: var(--silver);
+        margin: 0;
+    }
+
+    /* ── Labels ─────────────────────────────────────── */
+    .cx-label {
+        display: block;
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        color: var(--navy);
+        margin-bottom: .5rem;
+    }
+
+    .cx-required {
+        color: var(--gold);
+        margin-left: 2px;
+    }
+
+    /* ── Inputs con icono ───────────────────────────── */
+    .cx-field {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .cx-input-wrap {
+        position: relative;
+    }
+
+    .cx-input-icon {
+        position: absolute;
+        left: .875rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--silver);
+        font-size: .9rem;
+        pointer-events: none;
+        transition: color var(--transition);
+    }
+
+    .cx-input,
+    .cx-textarea {
+        width: 100%;
+        background: var(--ivory);
+        border: 1.5px solid var(--light-gray);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: .9rem;
+        color: var(--charcoal);
+        transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+        outline: none;
+    }
+
+    .cx-input {
+        padding: .75rem .875rem .75rem 2.625rem;
+    }
+
+    .cx-textarea {
+        padding: .875rem 1rem;
+        resize: vertical;
+        min-height: 130px;
+    }
+
+        .cx-input::placeholder,
+        .cx-textarea::placeholder {
+            color: var(--silver);
+            opacity: 0.7;
         }
+
+        /* Foco — borde + sombra dorada */
+        .cx-input:focus,
+        .cx-textarea:focus {
+            border-color: var(--gold);
+            background: var(--white);
+            box-shadow: 0 0 0 4px rgba(184, 150, 62, 0.25);
+        }
+
+    .cx-input-wrap:focus-within .cx-input-icon {
+        color: var(--gold);
+    }
+
+    .cx-textarea-wrap {
+        position: relative;
+    }
+
+    /* ── Validación ─────────────────────────────────── */
+    .cx-validation-summary {
+        background: #FEF2F2;
+        border: 1px solid #FECACA;
+        color: #991B1B;
+        border-radius: var(--radius-sm);
+        padding: .75rem 1rem;
+        font-size: .82rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* ── CTA ────────────────────────────────────────── */
+    .cx-cta-row {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        margin-top: 1.75rem;
+        flex-wrap: wrap;
+    }
+
+    .cx-btn-submit {
+        display: inline-flex;
+        align-items: center;
+        gap: .625rem;
+        padding: .875rem 2rem;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, var(--navy) 0%, rgba(11,31,58, 0.85) 100%);
+        color: var(--white);
+        font-size: .9rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+        box-shadow: var(--shadow-sm);
+    }
+
+        .cx-btn-submit::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .cx-btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+            .cx-btn-submit:hover:not(:disabled)::before {
+                opacity: 1;
+            }
+
+        .cx-btn-submit > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cx-btn-submit:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .cx-btn-submit:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+    .cx-btn-arrow {
+        transition: transform var(--transition);
+    }
+
+    .cx-btn-submit:hover:not(:disabled) .cx-btn-arrow {
+        transform: translateX(4px);
+    }
+
+    /* Spinner inline */
+    .cx-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: cx-spin .65s linear infinite;
+    }
+
+    @@keyframes cx-spin {
+        to
+
+    {
+        transform: rotate(360deg);
+    }
+
+    }
+
+    .cx-privacy-note {
+        font-size: .76rem;
+        color: var(--silver);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: .375rem;
+    }
+
+    /* ── Éxito ──────────────────────────────────────── */
+    .cx-success {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.25rem;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border: 1px solid #86EFAC;
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        animation: cx-fadein .4s ease;
+    }
+
+    @@keyframes cx-fadein {
+        from
+
+    {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    }
+
+    .cx-success-ring {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: #16A34A;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+        box-shadow: 0 0 0 6px rgba(22,163,74,.15);
+    }
+
+    .cx-success-title {
+        font-family: var(--font-display, 'Georgia', serif);
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #14532D;
+        margin: 0 0 .4rem;
+    }
+
+    .cx-success-sub {
+        font-size: .875rem;
+        color: #166534;
+        margin: 0;
+        line-height: 1.55;
+    }
+
+    /* ── Tarjeta de información (derecha) ───────────── */
+    .cx-info-card {
+        position: relative;
+        background: var(--navy);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-lg);
+    }
+
+    /* Orbes decorativos */
+    .cx-orb {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .cx-orb-1 {
+        width: 320px;
+        height: 320px;
+        top: -100px;
+        right: -100px;
+        background: radial-gradient(circle, rgba(255,255,255,.05) 0%, transparent 70%);
+    }
+
+    .cx-orb-2 {
+        width: 220px;
+        height: 220px;
+        bottom: -60px;
+        left: -60px;
+        background: radial-gradient(circle, rgba(255,255,255,.03) 0%, transparent 70%);
+    }
+
+    .cx-info-inner {
+        position: relative;
+        z-index: 1;
+        padding: 2.25rem;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /* Marca */
+    .cx-info-brand {
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .cx-info-mono {
+        width: 48px;
+        height: 48px;
+        border-radius: var(--radius-sm);
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display, 'Georgia', serif);
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--gold-light);
+        flex-shrink: 0;
+    }
+
+    .cx-info-firm {
+        font-family: var(--font-display, 'Georgia', serif);
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--white);
+        line-height: 1.2;
+    }
+
+    .cx-info-slogan {
+        font-size: .78rem;
+        color: rgba(255,255,255,.5);
+        font-style: italic;
+        margin-top: .2rem;
+    }
+
+    .cx-info-sep {
+        height: 1px;
+        background: rgba(255,255,255,.08);
+        margin-bottom: 1.5rem;
+    }
+
+    .cx-info-section-label {
+        font-size: .63rem;
+        font-weight: 700;
+        letter-spacing: .14em;
+        color: var(--gold);
+        margin: 0 0 1rem;
+    }
+
+    /* Items de contacto */
+    .cx-info-items {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .cx-info-item {
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+        padding: .875rem 1rem;
+        border-radius: var(--radius-sm);
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.06);
+        transition: background var(--transition), border-color var(--transition);
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .cx-info-link:hover {
+        background: rgba(255,255,255,.08);
+        border-color: rgba(255,255,255,.15);
+    }
+
+    .cx-info-item-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .9rem;
+        flex-shrink: 0;
+    }
+
+    .cx-icon-green {
+        background: rgba(34,197,94,.15);
+        color: #4ade80;
+    }
+
+    .cx-icon-gold {
+        background: rgba(255,255,255,.1);
+        color: var(--gold-light);
+    }
+
+    .cx-icon-blue {
+        background: rgba(96,165,250,.15);
+        color: #93c5fd;
+    }
+
+    .cx-info-item-body {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+
+    .cx-info-item-label {
+        font-size: .65rem;
+        font-weight: 600;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,.38);
+    }
+
+    .cx-info-item-value {
+        font-size: .875rem;
+        color: rgba(255,255,255,.85);
+        margin-top: .15rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cx-ext-icon {
+        font-size: .62rem;
+        opacity: .5;
+        margin-left: .3rem;
+    }
+
+    /* Mapa */
+    .cx-map-wrap {
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,.1);
+        margin-bottom: 1.5rem;
+    }
+
+    .cx-map-link {
+        display: block;
+        text-align: center;
+        font-size: .75rem;
+        color: rgba(255,255,255,.4);
+        padding: .5rem;
+        text-decoration: none;
+        background: rgba(0,0,0,.2);
+        transition: color var(--transition);
+    }
+
+        .cx-map-link:hover {
+            color: var(--gold-light);
+        }
+
+    /* Sellos de confianza */
+    .cx-trust-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .625rem;
+        margin-top: auto;
+        padding-top: 1.25rem;
+        border-top: 1px solid rgba(255,255,255,.07);
+    }
+
+    .cx-trust-item {
+        display: flex;
+        align-items: center;
+        gap: .375rem;
+        font-size: .72rem;
+        color: rgba(255,255,255,.45);
+        background: rgba(255,255,255,.04);
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 100px;
+        padding: .35rem .75rem;
+    }
+
+        .cx-trust-item i {
+            color: var(--gold);
+            font-size: .75rem;
+        }
+
+    /* ── Responsive ─────────────────────────────────── */
+    @@media (max-width: 991.98px) {
+        .cx-form-inner {
+            padding: 1.75rem 1.75rem 1.75rem 2.25rem;
+        }
+
+        .cx-info-inner {
+            padding: 1.75rem;
+        }
+
+        .cx-hero-title {
+            font-size: 2rem;
+        }
+    }
+
+    @@media (max-width: 575.98px) {
+        .cx-form-inner {
+            padding: 1.5rem 1.5rem 1.5rem 1.875rem;
+        }
+
+        .cx-cta-row {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .cx-btn-submit {
+            width: 100%;
+            justify-content: center;
+        }
+    }
 </style>
 
 @code {
     private LamillaEscudero.Application.Models.Consultas.ConsultaWebCreateRequest form = new();
     private string? mensaje;
     private bool enviando;
-
     private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? config;
     private string? urlMapa;
 
@@ -346,8 +918,7 @@
         {
             var lat = c.MapLatitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
             var lon = c.MapLongitude.Value.ToString("F6", System.Globalization.CultureInfo.InvariantCulture);
-            return $"https://www.openstreetmap.org/export/embed.html" +
-                   $"?bbox={lon}&layer=mapnik&marker={lat}%2C{lon}";
+            return $"https://www.openstreetmap.org/export/embed.html?bbox={lon}&layer=mapnik&marker={lat}%2C{lon}";
         }
 
         return null;

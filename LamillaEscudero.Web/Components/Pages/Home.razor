@@ -2,15 +2,75 @@
 @inject LamillaEscudero.Application.Abstractions.IServicioOfrecidoService ServicioService
 @inject LamillaEscudero.Application.Abstractions.IMiembroEstudioService MiembroService
 @inject LamillaEscudero.Application.Abstractions.IConfiguracionEstudioService ConfigService
+@* ✅ INYECTAMOS EL NUEVO SERVICIO DE TESTIMONIOS *@
+@inject LamillaEscudero.Application.Abstractions.ITestimonioService TestimonioService
 @inject Microsoft.JSInterop.IJSRuntime JS
+@implements IDisposable
 @rendermode InteractiveServer
 @using System.Text.Json
 @using System.Text.Json.Serialization
 
-<PageTitle>Inicio — Lamilla Escudero &amp; Asociados</PageTitle>
+<PageTitle>Abogados en Ecuador |Babahoyo - Los Ríos, Guayaquil, Quito | Lamilla Escudero &amp; Asociados</PageTitle>
 <HeadContent>
     <meta name="google-site-verification" content="QpFSJSBWQJSGnyEmo52UMjlrNpdSOFUa6777I1jwqeQ" />
+
+    <meta name="description" content="Estudio jurídico líder con cobertura en todo el Ecuador. Asesoría y defensa legal en Guayaquil, Quito, Cuenca, Machala y Los Ríos. Abg. Rolando Lamilla." />
+
+    <meta name="keywords" content="abogados ecuador, abogados guayaquil, abogados quito, abogados cuenca, abogados machala, abogados manta, abogados portoviejo, abogados santo domingo, abogados loja, abogados babahoyo, abogados quevedo, abogados montalvo, abogados vinces, abogados baba, derecho penal ecuador,estudio jurídico babahoyo, abogado rolando lamilla, asesoría legal" />
+
+    <meta property="og:title" content="Estudio Jurídico Lamilla Escudero | Cobertura Nacional" />
+    <meta property="og:description" content="Defensa legal estratégica con resultados en todo el país. Agenda tu consulta hoy mismo." />
+    <meta property="og:type" content="website" />
+
+    <script type="application/ld+json">
+        {
+          "@@context": "https://schema.org",
+          "@@type": "LegalService",
+          "name": "Lamilla Escudero & Asociados",
+          "alternateName": "Estudio Jurídico Abg. Rolando Lamilla",
+          "description": "Estudio jurídico con capacidad de litigio nacional en Ecuador, especializado en derecho civil, penal, familiar y mercantil.",
+          "address": {
+            "@@type": "PostalAddress",
+            "addressLocality": "Babahoyo",
+            "addressRegion": "Los Ríos",
+            "addressCountry": "EC"
+          },
+          "geo": {
+            "@@type": "GeoCoordinates",
+            "latitude": "-1.8019",
+            "longitude": "-79.5347"
+          },
+          "areaServed": [
+            { "@@type": "City", "name": "Guayaquil" },
+            { "@@type": "City", "name": "Quito" },
+            { "@@type": "City", "name": "Cuenca" },
+            { "@@type": "City", "name": "Santo Domingo" },
+            { "@@type": "City", "name": "Machala" },
+            { "@@type": "City", "name": "Manta" },
+            { "@@type": "City", "name": "Portoviejo" },
+            { "@@type": "City", "name": "Loja" },
+            { "@@type": "City", "name": "Ambato" },
+            { "@@type": "City", "name": "Babahoyo" },
+            { "@@type": "City", "name": "Quevedo" },
+            { "@@type": "City", "name": "Montalvo" },
+            { "@@type": "City", "name": "Baba" },
+            { "@@type": "City", "name": "Vinces" },
+            { "@@type": "City", "name": "Ventanas" },
+            { "@@type": "City", "name": "Mocache" },
+            { "@@type": "City", "name": "Buena Fe" },
+            { "@@type": "City", "name": "Catarama" },
+
+            { "@@type": "City", "name": "Puebloviejo" },
+            { "@@type": "State", "name": "Los Ríos" },
+            { "@@type": "State", "name": "Guayas" },
+            { "@@type": "State", "name": "Pichincha" },
+            { "@@type": "Country", "name": "Ecuador" }
+          ],
+          "priceRange": "$$"
+        }
+    </script>
 </HeadContent>
+
 @* ════════════════════════════════════════════════════════════════
    OVERLAY — PERFIL COMPLETO DEL ABOGADO
    ════════════════════════════════════════════════════════════════ *@
@@ -33,7 +93,6 @@
                     }
                     else
                     {
-
                         <div class="bio-initials">@GetInitials(overlayMiembro.Nombres)</div>
                     }
                     <div class="bio-photo-ring"></div>
@@ -88,12 +147,10 @@
                         }
                         else if (!string.IsNullOrWhiteSpace(overlayMiembro.BiografiaCompleta))
                         {
-
                             <p class="bio-text">@overlayMiembro.BiografiaCompleta</p>
                         }
                         else
                         {
-
                             <p class="bio-text bio-text-empty">Perfil en preparación.</p>
                         }
                     </div>
@@ -207,16 +264,24 @@
                     {
                         @if (!string.IsNullOrWhiteSpace(config.TelefonoContacto))
                         {
+                            var numero = System.Text.RegularExpressions.Regex.Replace(config.TelefonoContacto, @"\D", "");
+                            var mensajeWp = Uri.EscapeDataString("Hola Abogado Lamilla, me comunico desde su página web para solicitar una consulta...");
                             <div class="hcc-item">
-                                <div class="hcc-item-icon"><i class="bi bi-telephone-fill"></i></div>
-                                <span>@config.TelefonoContacto</span>
+                                <div class="hcc-item-icon"><i class="bi bi-whatsapp" style="color:#25D366;"></i></div>
+                                <a href="https://wa.me/@numero?text=@mensajeWp" target="_blank" rel="noopener" class="text-decoration-none" style="color:var(--charcoal);">
+                                    @config.TelefonoContacto
+                                </a>
                             </div>
                         }
                         @if (!string.IsNullOrWhiteSpace(config.EmailContacto))
                         {
+                            var asunto = Uri.EscapeDataString("Consulta desde la página web");
+                            var cuerpo = Uri.EscapeDataString("Estimado Abogado,\n\nMe comunico para solicitar información sobre sus servicios legales.\n\nQuedo a la espera de su respuesta.");
                             <div class="hcc-item">
                                 <div class="hcc-item-icon"><i class="bi bi-envelope-fill"></i></div>
-                                <span>@config.EmailContacto</span>
+                                <a href="mailto:@config.EmailContacto?subject=@asunto&body=@cuerpo" class="text-decoration-none" style="color:var(--charcoal);">
+                                    @config.EmailContacto
+                                </a>
                             </div>
                         }
                         @if (!string.IsNullOrWhiteSpace(config.Direccion))
@@ -255,12 +320,11 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   ABOUT — nueva sección
+   ABOUT
    ════════════════════════════════════════════════════════════════ *@
 <section class="about-section" id="nosotros">
     <div class="container">
         <div class="about-grid">
-            @* Imagen con badge de experiencia *@
             <div class="about-image-col reveal">
                 <div class="about-img-frame">
                     @if (config is not null && (!string.IsNullOrWhiteSpace(config.PhotoUrl) || !string.IsNullOrWhiteSpace(config.LogoUrl)))
@@ -283,7 +347,6 @@
                 </div>
             </div>
 
-            @* Contenido textual *@
             <div class="about-content-col reveal">
                 <span class="section-eyebrow">Sobre nosotros</span>
                 <h2 class="about-title">
@@ -576,105 +639,165 @@
 }
 
 @* ════════════════════════════════════════════════════════════════
-   TESTIMONIOS
+   TESTIMONIOS DINÁMICOS (FASE 10)
    ════════════════════════════════════════════════════════════════ *@
-<section class="testimonials-section">
-    <div class="container">
-        <div class="section-header reveal">
-            <span class="section-eyebrow" style="color:var(--gold-light);">Lo que dicen</span>
-            <h2 class="section-title" style="color:var(--white);">Lo que dicen nuestros clientes</h2>
+<section class="testimonios-section py-5" style="background:var(--navy); position:relative;">
+    <div class="container" style="position:relative; z-index:2;">
+
+        <div class="section-header text-center mb-4">
+            <span class="section-eyebrow" style="color:var(--gold-light);">Lo que dicen nuestros clientes</span>
+            <h2 class="section-title" style="color:var(--white);">Testimonios</h2>
             <div class="section-title-line"></div>
-            <p class="section-subtitle" style="color:rgba(255,255,255,.55);">La confianza de nuestros clientes es nuestro mayor logro.</p>
         </div>
-        <div class="testimonials-grid">
-            <div class="testimonial-card reveal">
-                <div class="tc-stars">
-                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
+
+        @if (_testimonios.Count > 0)
+        {
+            @* ── Carrusel ── *@
+            <div class="testi-carousel mb-5" @onmouseenter="PausarCarrusel" @onmouseleave="ReanudarCarrusel">
+                <div class="testi-track" style="transform:translateX(-@(_carruselIndex * 100)%)">
+                    @foreach (var t in _testimonios)
+                    {
+                        <div class="testi-slide">
+                            <div class="testimonial-card">
+                                <div class="tc-stars mb-3">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        var fi = i;
+                                        <i class="bi @(fi <= t.Calificacion ? "bi-star-fill" : "bi-star")"></i>
+                                    }
+                                </div>
+                                <p class="tc-quote">"@t.Comentario"</p>
+                                <div class="tc-author">
+                                    <div class="tc-author-avatar">@t.Nombre[..1].ToUpper()</div>
+                                    <div>
+                                        <strong class="tc-author-name">@t.Nombre</strong>
+                                        <span class="tc-author-case">@t.CreatedAt.ToString("MMMM yyyy")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
                 </div>
-                <p class="tc-quote">
-                    "Excelente atención desde el primer momento. Resolvieron mi caso con profesionalismo
-                    y estrategia clara. Los resultados superaron mis expectativas. Los recomiendo totalmente."
-                </p>
-                <div class="tc-author">
-                    <div class="tc-author-avatar">MC</div>
-                    <div>
-                        <strong class="tc-author-name">María Cárdenas</strong>
-                        <span class="tc-author-case">Caso de Derecho Civil</span>
+                @if (_testimonios.Count > 1)
+                {
+                    <div class="testi-dots mt-4 text-center">
+                        @for (int i = 0; i < _testimonios.Count; i++)
+                        {
+                            var idx = i;
+                            <button class="testi-dot @(idx == _carruselIndex ? "active" : "")"
+                                    @onclick="() => IrASlide(idx)"></button>
+                        }
                     </div>
-                </div>
+                }
             </div>
-            <div class="testimonial-card reveal">
-                <div class="tc-stars">
-                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <p class="tc-quote">
-                    "Gracias al equipo de Lamilla Escudero logré obtener la resolución favorable
-                    que necesitaba. Su conocimiento del derecho local fue determinante en el resultado."
-                </p>
-                <div class="tc-author">
-                    <div class="tc-author-avatar">RV</div>
-                    <div>
-                        <strong class="tc-author-name">Roberto Vera</strong>
-                        <span class="tc-author-case">Caso Laboral</span>
+        }
+        @* ── Formulario para dejar testimonio (Diseño Premium) ── *@
+        <div class="row mt-5">
+            <div class="col-12">
+                <div class="testi-form-card reveal">
+                    <div class="testi-form-header text-center">
+                        <i class="bi bi-pencil-square me-2"></i>Deja tu opinión
                     </div>
-                </div>
-            </div>
-            <div class="testimonial-card reveal">
-                <div class="tc-stars">
-                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <p class="tc-quote">
-                    "Claridad, honestidad y dedicación en cada etapa del proceso. Me asesoraron
-                    perfectamente en un momento muy difícil. Sin dudas, los mejores abogados de la región."
-                </p>
-                <div class="tc-author">
-                    <div class="tc-author-avatar">LP</div>
-                    <div>
-                        <strong class="tc-author-name">Laura Peñafiel</strong>
-                        <span class="tc-author-case">Caso de Familia</span>
+                    <div class="testi-form-body">
+
+                        @if (_mensajeEnvio is not null)
+                        {
+                            <div class="py-3 px-3 mb-4 text-center"
+                                 style="border-radius: var(--radius-md);
+                                            background: @(_errorEnvio ? "rgba(255, 193, 7, 0.1)" : "rgba(32, 201, 151, 0.1)");
+                                            border: 1px solid @(_errorEnvio ? "rgba(255, 193, 7, 0.3)" : "rgba(32, 201, 151, 0.3)");
+                                            color: @(_errorEnvio ? "#ffc107" : "#20c997");
+                                            font-size: 0.95rem;
+                                            font-weight: 500;">
+                                <i class="bi @(_errorEnvio ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
+                                @_mensajeEnvio
+                            </div>
+                        }
+
+                        @if (!_enviado)
+                        {
+                            <div class="mb-4 text-start">
+                                <label class="testi-form-label">Tu nombre *</label>
+                                <input class="form-control testi-input w-100" placeholder="Ej: María García"
+                                       @bind="_nuevoNombre" maxlength="150" />
+                            </div>
+
+                            <div class="mb-4 text-start">
+                                <label class="testi-form-label">Calificación</label>
+                                <div class="testi-stars-input d-flex justify-content-start">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        var estrella = i;
+                                        <button type="button" class="btn btn-link p-0 text-decoration-none"
+                                                @onclick="() => _nuevaCalificacion = estrella">
+                                            <i class="bi @(estrella <= _nuevaCalificacion ? "bi-star-fill" : "bi-star")"></i>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="mb-4 text-start">
+                                <label class="testi-form-label">Tu comentario *</label>
+                                <textarea class="form-control testi-input w-100" rows="3"
+                                          placeholder="Cuéntenos su experiencia con el estudio..."
+                                          @bind="_nuevoComentario" maxlength="1000"></textarea>
+                            </div>
+
+                            <button class="testi-btn-submit w-100"
+                                    @onclick="EnviarTestimonio"
+                                    disabled="@_enviando">
+                                @if (_enviando)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                }
+                                Publicar testimonio
+                            </button>
+                        }
                     </div>
                 </div>
             </div>
         </div>
+
     </div>
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   VALORES
+   VALORES (Con Título y Espaciado)
    ════════════════════════════════════════════════════════════════ *@
-<section class="values-section values-v2">
-    <div class="container">
-        <div class="values-inner">
+<section class="values-section values-v2 py-5" style="background: var(--navy); margin-top: -1px; border-top: 1px solid rgba(255,255,255,0.05);">
+    <div class="container pt-4">
+
+        @* NUEVO TÍTULO PARA LA SECCIÓN DE VALORES *@
+        <div class="section-header text-center mb-5 reveal">
+            <span class="section-eyebrow" style="color:var(--gold-light);">Nuestra Filosofía</span>
+            <h2 class="section-title" style="color:var(--white);">Pilares del Estudio</h2>
+            <div class="section-title-line"></div>
+        </div>
+
+        <div class="values-inner mt-4">
             <div class="value-item value-item-v2 reveal">
                 <div class="value-icon-wrap"><i class="bi bi-eye"></i></div>
                 <span class="value-num">01</span>
-                <h3 class="value-title">Transparencia</h3>
-                <p class="value-desc">Comunicación clara y honesta en cada etapa del proceso legal.</p>
+                <h3 class="value-title" style="color:var(--white);">Transparencia</h3>
+                <p class="value-desc" style="color:rgba(255,255,255,.7);">Comunicación clara y honesta en cada etapa del proceso legal.</p>
             </div>
-            <div class="value-divider"></div>
+            <div class="value-divider" style="background:rgba(255,255,255,.1);"></div>
             <div class="value-item value-item-v2 reveal">
                 <div class="value-icon-wrap"><i class="bi bi-shield-star"></i></div>
                 <span class="value-num">02</span>
-                <h3 class="value-title">Excelencia</h3>
-                <p class="value-desc">Preparación rigurosa y estrategia fundada en el derecho vigente.</p>
+                <h3 class="value-title" style="color:var(--white);">Excelencia</h3>
+                <p class="value-desc" style="color:rgba(255,255,255,.7);">Preparación rigurosa y estrategia fundada en el derecho vigente.</p>
             </div>
-            <div class="value-divider"></div>
+            <div class="value-divider" style="background:rgba(255,255,255,.1);"></div>
             <div class="value-item value-item-v2 reveal">
                 <div class="value-icon-wrap"><i class="bi bi-heart-fill"></i></div>
                 <span class="value-num">03</span>
-                <h3 class="value-title">Compromiso</h3>
-                <p class="value-desc">Tu causa es nuestra causa. Atención personalizada, siempre.</p>
+                <h3 class="value-title" style="color:var(--white);">Compromiso</h3>
+                <p class="value-desc" style="color:rgba(255,255,255,.7);">Tu causa es nuestra causa. Atención personalizada, siempre.</p>
             </div>
         </div>
     </div>
 </section>
-
 @* ════════════════════════════════════════════════════════════════
    CTA FINAL — con banda dorada
    ════════════════════════════════════════════════════════════════ *@
@@ -709,8 +832,154 @@
    ESTILOS
    ════════════════════════════════════════════════════════════════ *@
 <style>
+    /* ... (MANTÉN TODOS TUS ESTILOS EXISTENTES, SOLO SE AGREGAN ESTOS PARA EL CARRUSEL AL FINAL) ... */
+    .testi-carousel {
+        position: relative;
+        overflow: hidden;
+        padding-bottom: 1rem;
+    }
 
-    /* ══ SCROLL REVEAL ══════════════════════════════════════════════ */
+    .testi-track {
+        display: flex;
+        transition: transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .testi-slide {
+        min-width: 100%;
+        padding: 0 1rem;
+        box-sizing: border-box;
+    }
+
+    .testi-dots {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .testi-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: rgba(255,255,255,.3);
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+        .testi-dot.active {
+            background: var(--gold);
+            transform: scale(1.3);
+        }
+    /* ── Formulario de Testimonios (Glassmorphism) ── */
+    /* ── Formulario de Testimonios (Glassmorphism) ── */
+    .testi-form-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: var(--radius-xl);
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 650px; /* Evita que sea gigante */
+        margin: 0 auto; /* ¡ESTA ES LA MAGIA QUE LO CENTRA! */
+        width: 100%;
+    }
+
+    .testi-form-header {
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 1.25rem;
+        text-align: center;
+        color: var(--gold-light);
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        font-weight: 600;
+    }
+
+    .testi-form-body {
+        padding: 2.5rem 2rem;
+    }
+
+    .testi-form-label {
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        display: block;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .testi-input {
+        background: rgba(0, 0, 0, 0.25) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        color: var(--white) !important;
+        border-radius: var(--radius-md);
+        padding: 0.875rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+        .testi-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
+        }
+
+        .testi-input:focus {
+            background: rgba(0, 0, 0, 0.4) !important;
+            border-color: var(--gold) !important;
+            box-shadow: 0 0 0 3px rgba(184, 150, 62, 0.2) !important;
+            outline: none;
+        }
+
+    .testi-stars-input {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+        .testi-stars-input button {
+            font-size: 1.75rem;
+            line-height: 1;
+            transition: transform 0.2s ease;
+        }
+
+            .testi-stars-input button:hover {
+                transform: scale(1.15);
+            }
+
+        .testi-stars-input i {
+            color: var(--gold);
+            opacity: 0.9;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+    .testi-btn-submit {
+        background: linear-gradient(135deg, var(--gold), var(--gold-light));
+        color: var(--navy);
+        border: none;
+        border-radius: var(--radius-md);
+        padding: 0.875rem 1.5rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(184, 150, 62, 0.3);
+        margin-top: 1rem;
+    }
+
+        .testi-btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(184, 150, 62, 0.4);
+            filter: brightness(1.05);
+        }
+
+        .testi-btn-submit:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    /* RESTO DE TUS ESTILOS... */
     .reveal {
         opacity: 0;
         transform: translateY(38px);
@@ -722,7 +991,6 @@
             transform: translateY(0);
         }
 
-    /* ══ HERO ════════════════════════════════════════════════════════ */
     .hero-v2 {
         position: relative;
         overflow: hidden;
@@ -1006,7 +1274,6 @@
         }
     }
 
-    /* ══ ABOUT SECTION ══════════════════════════════════════════════ */
     .about-section {
         padding: 6rem 0;
         background: var(--white);
@@ -1203,7 +1470,6 @@
             color: white;
         }
 
-    /* ══ SERVICES — circular icon ═══════════════════════════════════ */
     .section-title-line {
         width: 48px;
         height: 3px;
@@ -1302,7 +1568,6 @@
             color: white !important;
         }
 
-    /* ══ WHY SECTION ════════════════════════════════════════════════ */
     .why-section {
         padding: 6rem 0;
         background: var(--white);
@@ -1392,7 +1657,6 @@
         margin: 0;
     }
 
-    /* ══ TRAYECTORIA ════════════════════════════════════════════════ */
     .trayectoria-v2 {
         position: relative;
         overflow: hidden;
@@ -1437,7 +1701,6 @@
         border-radius: 1px;
     }
 
-    /* ══ TEAM ════════════════════════════════════════════════════════ */
     .team-v2 {
         background: var(--ivory);
     }
@@ -1555,39 +1818,21 @@
             border-color: var(--navy);
         }
 
-    /* ══ TESTIMONIALS ═══════════════════════════════════════════════ */
-    .testimonials-section {
-        padding: 6rem 0;
-        background: var(--navy);
-        position: relative;
-        overflow: hidden;
-    }
-
-        .testimonials-section::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 2L58 30L30 58L2 30Z' fill='none' stroke='%23B8963E' stroke-opacity='0.04' stroke-width='1'/%3E%3C/svg%3E");
-        }
-
-    .testimonials-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.5rem;
-        margin-top: 3rem;
-        position: relative;
-        z-index: 1;
-    }
-
+    /* ── TARJETAS DEL CARRUSEL (Elegantes y Centradas) ── */
     .testimonial-card {
-        background: rgba(255,255,255,.05);
-        border: 1px solid rgba(255,255,255,.1);
-        border-radius: var(--radius-lg);
-        padding: 2.5rem 2rem;
+        background: rgba(255,255,255,.03);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: var(--radius-xl);
+        padding: 3rem 2rem;
+        max-width: 800px; /* Evita que se estire demasiado en PC */
+        margin: 0 auto; /* Centra la tarjeta en la pantalla */
+        text-align: center; /* CENTRA EL TEXTO */
         transition: all var(--transition);
         position: relative;
         overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0,0,0,.15);
     }
 
         .testimonial-card::before {
@@ -1607,45 +1852,53 @@
         }
 
         .testimonial-card:hover {
-            background: rgba(255,255,255,.09);
+            background: rgba(255,255,255,.06);
             transform: translateY(-6px);
             border-color: rgba(184,150,62,.3);
-            box-shadow: 0 16px 40px rgba(0,0,0,.25);
+            box-shadow: 0 16px 40px rgba(0,0,0,.3);
         }
 
     .tc-stars {
         color: var(--gold);
-        font-size: .9rem;
-        margin-bottom: 1.25rem;
+        font-size: 1.1rem;
         display: flex;
-        gap: .2rem;
+        gap: .25rem;
+        justify-content: center; /* Centra las estrellas */
+        margin-bottom: 1.5rem;
     }
 
     .tc-quote {
+        font-family: var(--font-display);
         font-style: italic;
-        font-size: .925rem;
-        color: rgba(255,255,255,.75);
+        font-size: 1.1rem;
+        color: rgba(255,255,255,.9);
         line-height: 1.8;
-        margin-bottom: 1.75rem;
+        margin-bottom: 2rem;
         position: relative;
+        z-index: 1;
     }
 
+        /* Comillas gigantes centradas como marca de agua en el fondo */
         .tc-quote::before {
             content: '\201C';
             font-family: var(--font-display);
-            font-size: 4rem;
+            font-size: 8rem;
             color: var(--gold);
-            opacity: .25;
+            opacity: .06;
             position: absolute;
-            top: -1rem;
-            left: -0.5rem;
+            top: -3.5rem;
+            left: 50%;
+            transform: translateX(-50%);
             line-height: 1;
+            z-index: -1;
         }
 
     .tc-author {
-        display: flex;
+        display: inline-flex; /* Mantiene el avatar y texto juntos */
         align-items: center;
         gap: 1rem;
+        justify-content: center; /* Centra el bloque del autor */
+        text-align: left; /* El nombre y fecha quedan alineados con el avatar */
     }
 
     .tc-author-avatar {
@@ -1676,9 +1929,9 @@
         font-size: .75rem;
         color: var(--gold-light);
         margin-top: .1rem;
+        text-transform: capitalize;
     }
 
-    /* ══ VALUES V2 ══════════════════════════════════════════════════ */
     .value-item-v2 {
         transition: transform var(--transition);
     }
@@ -1707,7 +1960,6 @@
         transform: scale(1.12);
     }
 
-    /* ══ CTA GOLD BAND ═════════════════════════════════════════════ */
     .cta-gold-band {
         padding: 5rem 0;
         background: linear-gradient(135deg, var(--gold) 0%, #a07830 100%);
@@ -1798,7 +2050,6 @@
             border-color: white;
         }
 
-    /* ══ LOGO HERO ══════════════════════════════════════════════════ */
     .home-brand-logo {
         display: inline-block;
         margin-bottom: 1.5rem;
@@ -1831,7 +2082,6 @@
         }
     }
 
-    /* ══ SCROLL TO TOP ═════════════════════════════════════════════ */
     .scroll-top-btn {
         position: fixed;
         bottom: 1.875rem;
@@ -1864,7 +2114,6 @@
             transform: translateY(-3px);
         }
 
-    /* ══ BIO OVERLAY ════════════════════════════════════════════════ */
     .bio-overlay {
         position: fixed;
         inset: 0;
@@ -2258,7 +2507,6 @@
         margin: 0;
     }
 
-    /* ══ RESPONSIVE ═════════════════════════════════════════════════ */
     @@media (max-width: 1200px) {
         .why-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -2400,7 +2648,6 @@
         }
         window.addEventListener('scroll', animateCounters, { passive: true });
         animateCounters();
-
         /* ─ Scroll to top button ────────────────────────────────── */
         var scrollBtn = document.getElementById('scrollTopBtn');
         if (scrollBtn) {
@@ -2426,7 +2673,6 @@
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
-
     private List<LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoResponse>? servicios;
     private List<LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse>? miembros;
     private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? config;
@@ -2439,13 +2685,78 @@
     private List<TimelineItem> overlayTimeline = new();
     private string bioTab = "bio";
 
+    // ── Testimonios ───────────────────────────────────────────
+    private List<LamillaEscudero.Application.Models.Testimonios.TestimonioResponse> _testimonios = new();
+    private bool _cargandoTestimonios = true;
+
+    // Formulario Testimonios
+    private string _nuevoNombre = string.Empty;
+    private string _nuevoComentario = string.Empty;
+    private int _nuevaCalificacion = 5;
+    private bool _enviando = false;
+    private bool _enviado = false;
+    private string? _mensajeEnvio = null;
+    private bool _errorEnvio = false;
+
+    // Carrusel Testimonios
+    private int _carruselIndex = 0;
+    private bool _carruselPausado = false;
+    private System.Threading.Timer? _timer;
+
     protected override async Task OnInitializedAsync()
     {
         servicios = await ServicioService.GetAllAsync();
         miembros = await MiembroService.GetAllAsync();
         config = await ConfigService.GetAsync();
-    }
 
+        // 1. Cargar testimonios Aprobados de la Base de Datos
+        try
+        {
+            _testimonios = await TestimonioService.GetAprobadosAsync() ?? new();
+        }
+        catch { _testimonios = new(); }
+
+        // 2. FUSIONAR: Agregar los testimonios estáticos de ejemplo
+        _testimonios.AddRange(new List<LamillaEscudero.Application.Models.Testimonios.TestimonioResponse>
+        {
+            new() {
+                Id = Guid.NewGuid(),
+                Nombre = "María Cárdenas",
+                Comentario = "Excelente atención desde el primer momento. Resolvieron mi caso con profesionalismo y estrategia clara. Los resultados superaron mis expectativas. Los recomiendo totalmente.",
+                Calificacion = 5,
+                CreatedAt = DateTime.Now.AddMonths(-3) // Le ponemos una fecha simulada
+            },
+            new() {
+                Id = Guid.NewGuid(),
+                Nombre = "Roberto Vera",
+                Comentario = "Gracias al equipo de Lamilla Escudero logré obtener la resolución favorable que necesitaba. Su conocimiento del derecho local fue determinante en el resultado.",
+                Calificacion = 5,
+                CreatedAt = DateTime.Now.AddMonths(-2)
+            },
+            new() {
+                Id = Guid.NewGuid(),
+                Nombre = "Laura Peñafiel",
+                Comentario = "Claridad, honestidad y dedicación en cada etapa del proceso. Me asesoraron perfectamente en un momento muy difícil. Sin dudas, los mejores abogados de la región.",
+                Calificacion = 5,
+                CreatedAt = DateTime.Now.AddMonths(-1)
+            }
+        });
+
+        _cargandoTestimonios = false;
+
+        // 3. Iniciar carrusel automático
+        if (_testimonios.Count > 1)
+        {
+            _timer = new System.Threading.Timer(_ =>
+            {
+                if (!_carruselPausado)
+                {
+                    _carruselIndex = (_carruselIndex + 1) % _testimonios.Count;
+                    InvokeAsync(StateHasChanged);
+                }
+            }, null, 4000, 4000);
+        }
+    }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         try { await JS.InvokeVoidAsync("eval", "window._revealInit && window._revealInit()"); }
@@ -2454,7 +2765,6 @@
 
     private void ToggleServicio(Guid id) => openServiceId = openServiceId == id ? null : id;
     private void ToggleMiembro(Guid id) => expandedMiembroId = expandedMiembroId == id ? null : id;
-
     private void AbrirOverlay(LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse m)
     {
         overlayMiembro = m;
@@ -2469,6 +2779,65 @@
     }
 
     private void CerrarOverlay() { overlayMiembro = null; }
+
+    private void IrASlide(int idx) => _carruselIndex = idx;
+    private void PausarCarrusel() => _carruselPausado = true;
+    private void ReanudarCarrusel() => _carruselPausado = false;
+
+    private async Task EnviarTestimonio()
+    {
+        if (string.IsNullOrWhiteSpace(_nuevoNombre) || string.IsNullOrWhiteSpace(_nuevoComentario))
+        {
+            _mensajeEnvio = "Por favor completa tu nombre y comentario.";
+            _errorEnvio = true;
+            return;
+        }
+
+        _enviando = true;
+        _mensajeEnvio = null;
+
+        try
+        {
+            var request = new LamillaEscudero.Application.Models.Testimonios.TestimonioCreateRequest
+            {
+                Nombre = _nuevoNombre,
+                Comentario = _nuevoComentario,
+                Calificacion = _nuevaCalificacion
+            };
+
+            // ✅ Usamos el servicio directamente en Blazor Server
+            var resultado = await TestimonioService.CreateAsync(request);
+
+            if (resultado.Estado == "Aprobado")
+            {
+                _mensajeEnvio = "¡Gracias! Su testimonio ya es visible.";
+                _errorEnvio = false;
+                _enviado = true;
+                _testimonios = await TestimonioService.GetAprobadosAsync();
+                _carruselIndex = _testimonios.Count - 1; // Ir al nuevo
+            }
+            else
+            {
+                _mensajeEnvio = "¡Gracias! Su testimonio está en revisión y será publicado pronto.";
+                _errorEnvio = false;
+                _enviado = true;
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _mensajeEnvio = ex.Message;
+            _errorEnvio = true;
+        }
+        catch
+        {
+            _mensajeEnvio = "No se pudo enviar el testimonio. Intenta de nuevo.";
+            _errorEnvio = true;
+        }
+
+        _enviando = false;
+    }
+
+    public void Dispose() => _timer?.Dispose();
 
     private static List<T> DeserializeList<T>(string? json) where T : new()
     {

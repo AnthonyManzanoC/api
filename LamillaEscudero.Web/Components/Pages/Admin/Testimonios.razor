@@ -1,0 +1,182 @@
+﻿@page "/admin/testimonios"
+@using LamillaEscudero.Application.Abstractions
+@using LamillaEscudero.Application.Models.Testimonios
+@using LamillaEscudero.Domain.Entities
+@inject ITestimonioService TestimonioSvc
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Administrador,Abogado")]
+@rendermode InteractiveServer
+
+<PageTitle>Moderación de Testimonios</PageTitle>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h2 style="font-family:var(--font-display);color:var(--navy);margin:0">
+            <i class="bi bi-star-half me-2 text-gold"></i>Testimonios
+        </h2>
+        <p class="text-muted mb-0" style="font-size:.875rem">
+            Modera los testimonios enviados por los visitantes.
+            @if (_pendientes > 0)
+            {
+                <span class="badge bg-warning text-dark ms-2">@_pendientes pendiente(s)</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm @(_filtro == "todos" ? "btn-dark" : "btn-outline-secondary")"
+                @onclick='() => SetFiltro("todos")'>
+            Todos
+        </button>
+        <button class="btn btn-sm @(_filtro == "pendiente" ? "btn-dark" : "btn-outline-secondary")"
+                @onclick='() => SetFiltro("pendiente")'>
+            Pendientes @(_pendientes > 0 ? $"({_pendientes})" : "")
+        </button>
+        <button class="btn btn-sm @(_filtro == "aprobado" ? "btn-dark" : "btn-outline-secondary")"
+                @onclick='() => SetFiltro("aprobado")'>
+            Aprobados
+        </button>
+        <button class="btn btn-sm @(_filtro == "rechazado" ? "btn-dark" : "btn-outline-secondary")"
+                @onclick='() => SetFiltro("rechazado")'>
+            Rechazados
+        </button>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5">
+        <div class="spinner-border" style="color:var(--gold)"></div>
+    </div>
+}
+else if (!_filtrados.Any())
+{
+    <div class="card p-5 text-center text-muted">
+        <i class="bi bi-inbox fs-1 mb-2 d-block"></i>
+        No hay testimonios en esta categoría.
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var t in _filtrados)
+        {
+            <div class="col-md-6 col-xl-4">
+                <div class="card h-100 @(t.FlagHate ? "border-warning" : "") @(t.Estado == "Aprobado" ? "border-success opacity-75" : "")">
+                    <div class="card-header d-flex align-items-center justify-content-between py-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:34px;height:34px;border-radius:50%;background:var(--navy);
+                                                display:flex;align-items:center;justify-content:center;
+                                                font-family:var(--font-display);color:var(--gold-light);font-size:.9rem">
+                                @t.Nombre[..1].ToUpper()
+                            </div>
+                            <div>
+                                <strong style="font-size:.875rem">@t.Nombre</strong>
+                                <div class="text-muted" style="font-size:.72rem">
+                                    @t.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <i class="bi @(i <= t.Calificacion ? "bi-star-fill" : "bi-star")"
+                                   style="color:var(--gold);font-size:.75rem"></i>
+                            }
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (t.FlagHate)
+                        {
+                            <div class="alert alert-warning py-1 px-2 mb-2" style="font-size:.78rem">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                Alerta: posible lenguaje inapropiado detectado
+                            </div>
+                        }
+                        <p style="font-size:.9rem;line-height:1.6;color:var(--charcoal)" class="mb-0">
+                            "@t.Comentario"
+                        </p>
+                    </div>
+                    <div class="card-footer d-flex gap-2 justify-content-between align-items-center">
+                        <span class="badge @GetBadgeClass(t.Estado)">@t.Estado</span>
+                        <div class="d-flex gap-1">
+                            @if (t.Estado != "Aprobado")
+                            {
+                                <button class="btn btn-sm btn-outline-success"
+                                        @onclick="() => Moderar(t.Id, EstadoTestimonio.Aprobado)"
+                                        disabled="@_guardando">
+                                    <i class="bi bi-check-lg"></i> Aprobar
+                                </button>
+                            }
+                            @if (t.Estado != "Rechazado")
+                            {
+                                <button class="btn btn-sm btn-outline-warning"
+                                        @onclick="() => Moderar(t.Id, EstadoTestimonio.Rechazado)"
+                                        disabled="@_guardando">
+                                    <i class="bi bi-x-lg"></i> Rechazar
+                                </button>
+                            }
+                            <button class="btn btn-sm btn-outline-danger"
+                                    @onclick="() => Eliminar(t.Id)"
+                                    disabled="@_guardando">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<TestimonioResponse> _todos = new();
+    private List<TestimonioResponse> _filtrados = new();
+    private string _filtro = "pendiente";
+    private bool _loading = true;
+    private bool _guardando = false;
+    private int _pendientes => _todos.Count(x => x.Estado == "Pendiente");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Cargar();
+    }
+
+    private async Task Cargar()
+    {
+        _loading = true;
+        _todos = await TestimonioSvc.GetAllAsync();
+        AplicarFiltro();
+        _loading = false;
+    }
+
+    private void SetFiltro(string f) { _filtro = f; AplicarFiltro(); }
+
+    private void AplicarFiltro()
+    {
+        _filtrados = _filtro == "todos"
+            ? _todos
+            : _todos.Where(x => x.Estado.ToLower() == _filtro).ToList();
+    }
+
+    private async Task Moderar(Guid id, string estado)
+    {
+        _guardando = true;
+        await TestimonioSvc.ModerarAsync(id, new TestimonioUpdateEstadoRequest { Estado = estado });
+        await Cargar();
+        _guardando = false;
+    }
+
+    private async Task Eliminar(Guid id)
+    {
+        _guardando = true;
+        await TestimonioSvc.DeleteAsync(id);
+        await Cargar();
+        _guardando = false;
+    }
+
+    private static string GetBadgeClass(string estado) => estado switch
+    {
+        "Aprobado" => "bg-success",
+        "Rechazado" => "bg-danger",
+        _ => "bg-warning text-dark"
+    };
+}

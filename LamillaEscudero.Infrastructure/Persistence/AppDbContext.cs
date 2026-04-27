@@ -11,7 +11,8 @@ public class AppDbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
      public DbSet<Abono> Abonos => Set<Abono>();
-
+    // ✅ FASE 10
+    public DbSet<Testimonio> Testimonios => Set<Testimonio>();
     public DbSet<Cliente> Clientes => Set<Cliente>();
     public DbSet<Causa> Causas => Set<Causa>();
     public DbSet<EventoProcesal> EventosProcesales => Set<EventoProcesal>();
@@ -137,7 +138,14 @@ public class AppDbContext
             // ✅ FASE 8 — Al no poner HasColumnType, EF Core usará "text" automáticamente en Postgres
             e.Property(x => x.PhotoUrl);
         });
-
+        builder.Entity<Testimonio>(e =>
+        {
+            e.Property(x => x.Nombre).HasMaxLength(150).IsRequired();
+            e.Property(x => x.Comentario).HasMaxLength(1000).IsRequired();
+            e.Property(x => x.Estado).HasMaxLength(20).IsRequired();
+            e.Property(x => x.NotaAdmin).HasMaxLength(500);
+            e.HasIndex(x => x.Estado);
+        });
         builder.Entity<MiembroEstudio>(e =>
         {
             e.Property(x => x.Nombres).HasMaxLength(200).IsRequired();

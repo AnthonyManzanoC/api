@@ -4,10 +4,15 @@
    y los guarda automáticamente via IConsultaWebService.
    ════════════════════════════════════════════════════════════ *@
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 @inject NavigationManager Nav
-@inject LamillaEscudero.Application.Abstractions.IConsultaWebService ConsultaService
+@inject IJSRuntime JS
+@inject IConsultaWebService ConsultaService
+@inject IPublicChatService PublicChatService
+@inject ITextToSpeechService TextToSpeechService
 
 <button class="chat-fab @(!isOpen ? "chat-fab-pulse" : "")"
+        type="button"
         title="¿En qué podemos ayudarte?"
         @onclick="ToggleChat">
     <i class="bi @(isOpen ? "bi-x-lg" : "bi-chat-dots-fill")"></i>
@@ -31,7 +36,7 @@
                     <span class="chat-online-dot"></span>En línea
                 </span>
             </div>
-            <button class="chat-close-btn" @onclick="ToggleChat" title="Cerrar">
+            <button class="chat-close-btn" type="button" @onclick="ToggleChat" title="Cerrar">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -68,7 +73,7 @@
             <div class="chat-suggestions">
                 @foreach (var s in suggestions)
                 {
-                    <button class="chat-suggestion-btn" @onclick="() => SendSuggestion(s)">@s</button>
+                    <button class="chat-suggestion-btn" type="button" @onclick="() => SendSuggestion(s)">@s</button>
                 }
             </div>
         }
@@ -77,11 +82,18 @@
             <input class="chat-input"
                    type="@inputType"
                    placeholder="@inputPlaceholder"
+                   @ref="chatInput"
                    @bind="inputText"
                    @bind:event="oninput"
                    @onkeydown="OnKeyDown"
                    maxlength="500" />
-            <button class="chat-send-btn" @onclick="SendUserMessage" title="Enviar">
+            <button class="chat-mic-btn @(isListening ? "chat-mic-btn-listening" : "")"
+                    type="button"
+                    @onclick="ToggleVoiceInputAsync"
+                    title="Dictar mensaje">
+                <i class="bi @(isListening ? "bi-mic-fill" : "bi-mic")"></i>
+            </button>
+            <button class="chat-send-btn" type="button" @onclick="SendUserMessage" title="Enviar">
                 <i class="bi bi-send-fill"></i>
             </button>
         </div>
@@ -96,7 +108,15 @@
     private string inputText = string.Empty;
     private string inputType = "text";
     private string inputPlaceholder = "Escribe tu mensaje...";
+    private bool isListening;
+    private bool jsReady;
+    private bool isDisposed;
+    private bool scrollAfterRender;
+    private string? pendingSpeechText;
+    private long pendingSpeechVersion;
+    private ElementReference chatInput;
     private ElementReference messagesContainer;
+    private DotNetObjectReference<ChatbotPublico>? voiceInteropRef;
     private List<string> suggestions = new();
 
     private record ChatMessage(string Text, bool IsBot, DateTime Time, bool IsHtml = false);
@@ -123,22 +143,58 @@
         badgeCount = 1;
     }
 
-    private void ToggleChat()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            jsReady = true;
+        }
+
+        if (!jsReady || isDisposed)
+        {
+            return;
+        }
+
+        if (scrollAfterRender)
+        {
+            scrollAfterRender = false;
+            await ScrollToBottom();
+        }
+
+        if (string.IsNullOrWhiteSpace(pendingSpeechText))
+        {
+            return;
+        }
+
+        var speechText = pendingSpeechText;
+        var speechVersion = pendingSpeechVersion;
+        pendingSpeechText = null;
+
+        await GenerateAndPlaySpeechAsync(speechText, speechVersion);
+    }
+
+    private Task ToggleChat()
     {
         isOpen = !isOpen;
         badgeCount = 0;
+        return Task.CompletedTask;
     }
 
     // ── Envío de mensajes ─────────────────────────────────────────
     private async Task SendUserMessage()
     {
         var text = inputText.Trim();
-        if (string.IsNullOrWhiteSpace(text)) return;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
         inputText = string.Empty;
 
         messages.Add(new(text, false, DateTime.Now));
         suggestions = new();
         isTyping = true;
+        scrollAfterRender = true;
         StateHasChanged();
 
         await Task.Delay(600);
@@ -169,68 +225,17 @@
             return;
         }
 
-        var lower = text.ToLowerInvariant();
+        var reply = await PublicChatService.GetReplyAsync(text);
 
-        if (Matches(lower, "hola", "buenos", "buenas", "saludos"))
+        if (reply.StartLeadCapture)
         {
-            Bot("¡Hola! Me alegra saludarte. ¿En qué puedo ayudarte hoy?");
-            SetSuggestions("inicio");
+            StartLeadCapture();
+            await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText);
             return;
         }
 
-        if (Matches(lower, "servicio", "área", "especialidad", "hacen", "ofrecen", "ayuda"))
-        {
-            BotHtml(
-                "<strong>Nuestras áreas de práctica:</strong><br>" +
-                "⚖️ <strong>Derecho Civil</strong> — contratos, obligaciones<br>" +
-                "👨‍👩‍👧 <strong>Derecho Familiar</strong> — divorcio, alimentos<br>" +
-                "🏛 <strong>Derecho Penal</strong> — defensa, investigación<br>" +
-                "💼 <strong>Derecho Laboral</strong> — despidos, indemnizaciones<br>" +
-                "🏢 <strong>Derecho Mercantil</strong> — empresas, contratos"
-            );
-            SetSuggestions("servicios");
-            return;
-        }
-
-        if (Matches(lower, "contact", "agendar", "cita", "consulta", "hablar", "necesito", "quiero"))
-        {
-            Bot("¡Perfecto! Te ayudaré a registrar tu consulta. Solo necesito algunos datos. ¿Me dices tu nombre completo?");
-            leadStep = LeadStep.Nombre;
-            inputPlaceholder = "Tu nombre completo...";
-            suggestions = new();
-            return;
-        }
-
-        if (Matches(lower, "horario", "hora", "cuando", "atención", "abierto"))
-        {
-            Bot("Nuestro horario de atención es de lunes a viernes, de 08:30 a 17:30. Los sábados hasta las 12:00.");
-            SetSuggestions("horario");
-            return;
-        }
-
-        if (Matches(lower, "precio", "costo", "cobran", "honorario", "cuanto"))
-        {
-            Bot("Los honorarios varían según el tipo y complejidad del caso. Lo mejor es agendar una consulta inicial donde el abogado podrá orientarte sin costo.");
-            SetSuggestions("precios");
-            return;
-        }
-
-        if (Matches(lower, "ubicación", "dirección", "dónde", "donde", "oficina", "llevar"))
-        {
-            Bot("Puedes ver nuestra ubicación exacta en la página de Contacto. También puedes escribirnos para coordinar una visita.");
-            SetSuggestions("ubicacion");
-            return;
-        }
-
-        if (Matches(lower, "gracias", "hasta", "adiós", "chao", "bye"))
-        {
-            Bot("¡Fue un placer! Recuerda que puedes contactarnos en cualquier momento. ¡Que tengas un excelente día! 🙏");
-            SetSuggestions("inicio");
-            return;
-        }
-
-        Bot("No estoy seguro de entender tu pregunta. ¿Puedo ayudarte con información sobre nuestros servicios, horarios o agendar una consulta?");
-        SetSuggestions("inicio");
+        await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText);
+        SetSuggestions(reply.SuggestionContext);
     }
 
     // ── Máquina de estados Lead ───────────────────────────────────
@@ -243,7 +248,9 @@
                 leadStep = LeadStep.Email;
                 inputType = "email";
                 inputPlaceholder = "Tu correo electrónico...";
-                Bot($"Encantado, {leadNombre} 👋. ¿Cuál es tu correo electrónico? <em>(o escribe «omitir»)</em>", isHtml: true);
+                await Bot($"Encantado, {leadNombre} 👋. ¿Cuál es tu correo electrónico? <em>(o escribe «omitir»)</em>",
+                    isHtml: true,
+                    speechText: $"Encantado, {leadNombre}. ¿Cuál es tu correo electrónico? Puedes decir omitir.");
                 break;
 
             case LeadStep.Email:
@@ -251,7 +258,9 @@
                 leadStep = LeadStep.Telefono;
                 inputType = "tel";
                 inputPlaceholder = "Tu número de teléfono...";
-                Bot("¿Y tu número de teléfono? <em>(o escribe «omitir»)</em>", isHtml: true);
+                await Bot("¿Y tu número de teléfono? <em>(o escribe «omitir»)</em>",
+                    isHtml: true,
+                    speechText: "¿Y tu número de teléfono? Puedes decir omitir.");
                 break;
 
             case LeadStep.Telefono:
@@ -259,21 +268,21 @@
                 leadStep = LeadStep.Asunto;
                 inputType = "text";
                 inputPlaceholder = "Ej. Consulta laboral, divorcio...";
-                Bot("¿Cuál es el asunto o motivo de tu consulta?");
+                await Bot("¿Cuál es el asunto o motivo de tu consulta?");
                 break;
 
             case LeadStep.Asunto:
                 leadAsunto = text;
                 leadStep = LeadStep.Mensaje;
                 inputPlaceholder = "Describe brevemente tu situación...";
-                Bot("Cuéntame un poco más sobre tu situación para que el abogado pueda prepararse mejor:");
+                await Bot("Cuéntame un poco más sobre tu situación para que el abogado pueda prepararse mejor:");
                 break;
 
             case LeadStep.Mensaje:
                 leadMensaje = text;
                 leadStep = LeadStep.Confirmar;
                 inputPlaceholder = "Escribe tu mensaje...";
-                MostrarResumen();
+                await MostrarResumen();
                 suggestions = new List<string> { "✅ Sí, enviar", "✏️ Corregir algo" };
                 break;
 
@@ -284,16 +293,15 @@
                 }
                 else
                 {
-                    leadStep = LeadStep.Nombre;
-                    inputPlaceholder = "Tu nombre completo...";
-                    Bot("Sin problema, empecemos de nuevo. ¿Cuál es tu nombre completo?");
+                    StartLeadCapture();
+                    await Bot("Sin problema, empecemos de nuevo. ¿Cuál es tu nombre completo?");
                     suggestions = new();
                 }
                 break;
         }
     }
 
-    private void MostrarResumen()
+    private Task MostrarResumen()
     {
         var htmlEmail = string.IsNullOrWhiteSpace(leadEmail) ? "" : $"📧 <strong>Email:</strong> {EscHtml(leadEmail)}<br>";
         var htmlTel = string.IsNullOrWhiteSpace(leadTelefono) ? "" : $"📱 <strong>Teléfono:</strong> {EscHtml(leadTelefono)}<br>";
@@ -307,13 +315,15 @@
             $"💬 <strong>Mensaje:</strong> {EscHtml(leadMensaje)}<br><br>" +
             "¿Es correcto? Te avisaré por aquí cuando hayamos registrado tu consulta.";
 
-        BotHtml(resumen);
+        return BotHtml(
+            resumen,
+            speechText: "Te mostré el resumen de tu consulta. Si todo está correcto, puedes decir sí, enviar.");
     }
 
     private async Task GuardarLead()
     {
         leadStep = LeadStep.Guardado;
-        Bot("⏳ Registrando tu consulta...");
+        await Bot("⏳ Registrando tu consulta...", speak: false);
         isTyping = true;
         StateHasChanged();
 
@@ -335,43 +345,79 @@
 
             if (result is not null)
             {
-                BotHtml(
+                await BotHtml(
                     "✅ <strong>¡Consulta registrada exitosamente!</strong><br>" +
                     $"Hemos guardado tu solicitud, {EscHtml(leadNombre)}. Un miembro del equipo " +
                     "la revisará y se pondrá en contacto contigo a la brevedad.<br><br>" +
-                    "También puedes llamarnos o visitar nuestra oficina si lo prefieres. ¡Gracias por confiar en nosotros! 🙏"
+                    "También puedes llamarnos o visitar nuestra oficina si lo prefieres. ¡Gracias por confiar en nosotros! 🙏",
+                    speechText: $"Consulta registrada exitosamente. Gracias, {leadNombre}. Un miembro del equipo se pondrá en contacto contigo a la brevedad."
                 );
                 SetSuggestions("fin");
                 badgeCount = 0;
+                ResetLeadCaptureState();
             }
             else
             {
-                BotHtml(
+                await BotHtml(
                     "❌ Hubo un problema al registrar tu consulta. Por favor intenta más tarde " +
-                    "o escríbenos directamente a través de la página de <a href='/contacto' style='color:var(--gold)'>Contacto</a>."
+                    "o escríbenos directamente a través de la página de <a href='/contacto' style='color:var(--gold)'>Contacto</a>.",
+                    speechText: "Hubo un problema al registrar tu consulta. Por favor intenta más tarde o usa la página de contacto."
                 );
-                leadStep = LeadStep.None;
+                ResetLeadCaptureState();
                 SetSuggestions("inicio");
             }
         }
         catch
         {
-            Bot("❌ Ocurrió un error. Por favor intenta desde la página de Contacto.");
-            leadStep = LeadStep.None;
+            await Bot("❌ Ocurrió un error. Por favor intenta desde la página de Contacto.");
+            ResetLeadCaptureState();
             SetSuggestions("inicio");
         }
 
-        // Reset datos del lead
-        leadNombre = leadEmail = leadTelefono = leadAsunto = leadMensaje = string.Empty;
+        ResetLeadData();
     }
 
     // ── Helpers ───────────────────────────────────────────────────
 
-    private void Bot(string text, bool isHtml = false)
-        => messages.Add(new(text, true, DateTime.Now, isHtml));
+    private Task Bot(
+        string text,
+        bool isHtml = false,
+        string? speechText = null,
+        bool speak = true)
+        => AddBotMessageAsync(text, isHtml, speechText, speak);
 
-    private void BotHtml(string html)
-        => messages.Add(new(html, true, DateTime.Now, IsHtml: true));
+    private Task BotHtml(string html, string? speechText = null, bool speak = true)
+        => AddBotMessageAsync(html, true, speechText, speak);
+
+    private async Task AddBotMessageAsync(
+        string message,
+        bool isHtml,
+        string? speechText = null,
+        bool speak = true)
+    {
+        messages.Add(new(message, true, DateTime.Now, isHtml));
+        scrollAfterRender = true;
+
+        if (!speak || !jsReady || isDisposed)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var textForSpeech = string.IsNullOrWhiteSpace(speechText)
+            ? ToSpeechText(message, isHtml)
+            : speechText;
+
+        if (string.IsNullOrWhiteSpace(textForSpeech))
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        pendingSpeechText = textForSpeech;
+        pendingSpeechVersion++;
+        await InvokeAsync(StateHasChanged);
+    }
 
     private static bool Matches(string input, params string[] keywords)
         => keywords.Any(k => input.Contains(k, StringComparison.OrdinalIgnoreCase));
@@ -379,12 +425,43 @@
     private static string EscHtml(string? s)
         => System.Net.WebUtility.HtmlEncode(s ?? string.Empty);
 
+    private static string ToSpeechText(string value, bool isHtml)
+    {
+        if (!isHtml)
+        {
+            return value;
+        }
+
+        var withoutTags = System.Text.RegularExpressions.Regex.Replace(value, "<[^>]+>", " ");
+        var decoded = System.Net.WebUtility.HtmlDecode(withoutTags);
+        return System.Text.RegularExpressions.Regex.Replace(decoded, @"\s+", " ").Trim();
+    }
+
+    private void StartLeadCapture()
+    {
+        leadStep = LeadStep.Nombre;
+        inputType = "text";
+        inputPlaceholder = "Tu nombre completo...";
+        suggestions = new();
+    }
+
+    private void ResetLeadCaptureState()
+    {
+        leadStep = LeadStep.None;
+        inputType = "text";
+        inputPlaceholder = "Escribe tu mensaje...";
+    }
+
+    private void ResetLeadData()
+        => leadNombre = leadEmail = leadTelefono = leadAsunto = leadMensaje = string.Empty;
+
     private void SetSuggestions(string context)
     {
         suggestions = context switch
         {
             "inicio" => new() { "¿Qué servicios ofrecen?", "Quiero agendar una cita", "Horarios de atención" },
             "servicios" => new() { "Quiero agendar una consulta", "¿Cuánto cobran?", "¿Dónde están?" },
+            "contacto" => new() { "Quiero agendar una consulta", "¿Qué servicios ofrecen?", "¿Dónde están?" },
             "horario" => new() { "Quiero agendar una cita", "¿Cuánto cobran?" },
             "precios" => new() { "Agendar consulta gratuita", "¿Dónde están?" },
             "ubicacion" => new() { "Agendar una cita", "Ver página de contacto" },
@@ -395,7 +472,102 @@
 
     private async Task ScrollToBottom()
     {
-        await Task.CompletedTask;
+        if (!jsReady || isDisposed)
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("voiceChat.scrollToBottom", messagesContainer);
+    }
+
+    private async Task ToggleVoiceInputAsync()
+    {
+        if (isListening)
+        {
+            await JS.InvokeVoidAsync("voiceChat.stopRecognition");
+            return;
+        }
+
+        voiceInteropRef ??= DotNetObjectReference.Create(this);
+        var supported = await JS.InvokeAsync<bool>(
+            "voiceChat.startRecognition",
+            chatInput,
+            voiceInteropRef,
+            "es-EC");
+
+        if (!supported)
+        {
+            await Bot("Tu navegador no soporta reconocimiento de voz nativo. Puedes seguir escribiendo tu consulta.", speak: false);
+            await ScrollToBottom();
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public Task OnSpeechRecognized(string transcript)
+        => InvokeAsync(() =>
+        {
+            inputText = transcript ?? string.Empty;
+            StateHasChanged();
+        });
+
+    [JSInvokable]
+    public Task OnVoiceStateChanged(bool listening)
+        => InvokeAsync(() =>
+        {
+            isListening = listening;
+            StateHasChanged();
+        });
+
+    [JSInvokable]
+    public Task OnVoiceError(string message)
+        => InvokeAsync(async () =>
+        {
+            isListening = false;
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                await Bot(message, speak: false);
+                await ScrollToBottom();
+            }
+
+            StateHasChanged();
+        });
+
+    private async Task GenerateAndPlaySpeechAsync(string text, long speechVersion)
+    {
+        try
+        {
+            var audioBase64 = await TextToSpeechService.GenerateAudioBase64Async(text);
+            if (string.IsNullOrWhiteSpace(audioBase64) || isDisposed || speechVersion != pendingSpeechVersion)
+            {
+                return;
+            }
+
+            await JS.InvokeVoidAsync("voiceChat.playAudioFromBase64", audioBase64);
+        }
+        catch
+        {
+            // El audio es opcional: nunca debe romper la respuesta del chat.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        isDisposed = true;
+
+        if (jsReady)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("voiceChat.stopRecognition");
+            }
+            catch
+            {
+                // Ignoramos errores al cerrar el circuito.
+            }
+        }
+
+        voiceInteropRef?.Dispose();
     }
 }
 
@@ -706,10 +878,11 @@
         font-family: inherit;
     }
 
-        .chat-input:focus {
-            border-color: var(--gold,#B8963E);
-        }
+    .chat-input:focus {
+        border-color: var(--gold,#B8963E);
+    }
 
+    .chat-mic-btn,
     .chat-send-btn {
         width: 36px;
         height: 36px;
@@ -726,7 +899,35 @@
         transition: background 150ms;
     }
 
+    .chat-mic-btn {
+        background: var(--ivory,#f8f6f1);
+        color: var(--navy,#0B1F3A);
+        border: 1px solid var(--light-gray,#e8e6e1);
+    }
+
+        .chat-mic-btn:hover {
+            background: #fff;
+            border-color: var(--gold,#B8963E);
+        }
+
+    .chat-mic-btn-listening {
+        background: #dc2626;
+        color: #fff;
+        border-color: #dc2626;
+        animation: chat-mic-pulse 1.2s infinite;
+    }
+
         .chat-send-btn:hover {
             background: var(--navy-mid,#142947);
         }
+
+    @@keyframes chat-mic-pulse {
+        0%,100% {
+            box-shadow: 0 0 0 0 rgba(220,38,38,.35);
+        }
+
+        50% {
+            box-shadow: 0 0 0 8px rgba(220,38,38,0);
+        }
+    }
 </style>

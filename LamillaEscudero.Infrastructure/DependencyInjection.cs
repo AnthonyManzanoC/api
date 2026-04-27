@@ -1,5 +1,6 @@
 ﻿using LamillaEscudero.Application.Abstractions;
 using LamillaEscudero.Infrastructure.Identity;
+using LamillaEscudero.Infrastructure.Options;
 using LamillaEscudero.Infrastructure.Persistence;
 using LamillaEscudero.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -30,6 +31,15 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
 
+        services.Configure<ElevenLabsOptions>(
+            configuration.GetSection(ElevenLabsOptions.SectionName));
+
+        services.AddHttpClient<ITextToSpeechService, ElevenLabsTextToSpeechService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.elevenlabs.io/");
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
+
         // ── Servicios anteriores ─────────────────────────────────
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IClienteService, ClienteService>();
@@ -42,11 +52,13 @@ public static class DependencyInjection
         services.AddScoped<IConsultaWebService, ConsultaWebService>();
         services.AddScoped<INotificacionService, NotificacionService>();
         services.AddScoped<IAutomationService, AutomationService>();
-
+        // ✅ FASE 10
+        services.AddScoped<ITestimonioService, TestimonioService>();
         // ✅ LOS SERVICIOS NUEVOS
         services.AddScoped<IMiembroEstudioService, MiembroEstudioService>();
         services.AddScoped<IServicioOfrecidoService, ServicioOfrecidoService>();
         services.AddScoped<ICentroCuentasService, CentroCuentasService>();
+        services.AddScoped<IPublicChatService, PublicChatService>();
 
         // Si ya creaste el archivo EmailService de la Fase 7, descomenta la siguiente línea:
         services.AddScoped<IEmailService, EmailService>();
