@@ -13,10 +13,15 @@
                     <i class="bi bi-list"></i>
                 </button>
                 <nav aria-label="breadcrumb" class="topbar-breadcrumb">
+                    <span class="breadcrumb-pill">Panel Inteligente</span>
                     <span class="breadcrumb-current">@GetPageTitle()</span>
                 </nav>
             </div>
             <div class="topbar-right">
+                <div class="topbar-status">
+                    <span class="topbar-status-dot"></span>
+                    <span>Operación segura</span>
+                </div>
                 <span class="topbar-date">@DateTime.Now.ToString("dd 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-EC"))</span>
                 <form method="post" action="/logout" @formname="logout-topbar">
                     <AntiforgeryToken />

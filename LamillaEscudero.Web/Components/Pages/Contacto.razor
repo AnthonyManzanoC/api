@@ -6,6 +6,8 @@
 <PageTitle>Contacto — Lamilla Escudero</PageTitle>
 
 <section class="cx-section">
+    <div class="cx-backdrop-orb cx-backdrop-orb-1" aria-hidden="true"></div>
+    <div class="cx-backdrop-orb cx-backdrop-orb-2" aria-hidden="true"></div>
     <div class="container">
 
         @* ── Encabezado de sección ── *@
@@ -16,6 +18,11 @@
                 Cuéntenos su situación y un especialista del estudio
                 se pondrá en contacto con usted en el menor tiempo posible.
             </p>
+            <div class="cx-hero-pills">
+                <span class="cx-hero-pill"><i class="bi bi-shield-check"></i>Confidencialidad total</span>
+                <span class="cx-hero-pill"><i class="bi bi-clock-history"></i>Respuesta prioritaria</span>
+                <span class="cx-hero-pill"><i class="bi bi-stars"></i>Atención premium</span>
+            </div>
         </div>
 
         <div class="row gx-5 gy-5 align-items-stretch">
@@ -169,6 +176,10 @@
                         }
 
                         <p class="cx-info-section-label">INFORMACIÓN DE CONTACTO</p>
+                        <p class="cx-info-intro">
+                            Una conversación clara, discreta y bien dirigida puede marcar la diferencia
+                            desde el primer día de tu proceso.
+                        </p>
 
                         <div class="cx-info-items">
 
@@ -260,6 +271,31 @@
                             <div class="cx-trust-item">
                                 <i class="bi bi-award-fill"></i>
                                 <span>Asesoría especializada</span>
+                            </div>
+                        </div>
+
+                        <div class="cx-process">
+                            <p class="cx-process-title">Cómo trabajamos</p>
+                            <div class="cx-process-step">
+                                <span class="cx-process-num">01</span>
+                                <div>
+                                    <strong>Recibimos tu caso</strong>
+                                    <span>Leemos el contexto y priorizamos lo urgente.</span>
+                                </div>
+                            </div>
+                            <div class="cx-process-step">
+                                <span class="cx-process-num">02</span>
+                                <div>
+                                    <strong>Definimos la ruta</strong>
+                                    <span>Te orientamos con claridad sobre riesgos, opciones y próximos pasos.</span>
+                                </div>
+                            </div>
+                            <div class="cx-process-step">
+                                <span class="cx-process-num">03</span>
+                                <div>
+                                    <strong>Actuamos con precisión</strong>
+                                    <span>Ejecutamos la estrategia con seguimiento profesional y humano.</span>
+                                </div>
                             </div>
                         </div>
 
@@ -880,6 +916,181 @@
         }
 
         .cx-btn-submit {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       CONTACTO — Premium overrides
+       ═══════════════════════════════════════════════════ */
+    .cx-section {
+        position: relative;
+        overflow: hidden;
+        padding: 5.5rem 0 6.5rem;
+        background:
+            radial-gradient(circle at top left, rgba(255,255,255,.72), transparent 24%),
+            radial-gradient(circle at top right, rgba(0,0,0,.04), transparent 20%),
+            var(--ivory);
+    }
+
+    .cx-backdrop-orb {
+        position: absolute;
+        border-radius: 50%;
+        pointer-events: none;
+        filter: blur(12px);
+    }
+
+    .cx-backdrop-orb-1 {
+        width: 380px;
+        height: 380px;
+        top: -120px;
+        left: -120px;
+        background: rgba(255,255,255,.55);
+    }
+
+    .cx-backdrop-orb-2 {
+        width: 280px;
+        height: 280px;
+        right: -80px;
+        bottom: 40px;
+        background: rgba(0,0,0,.03);
+    }
+
+    .cx-hero {
+        position: relative;
+        z-index: 1;
+        margin-bottom: 4rem;
+    }
+
+    .cx-hero-pills {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: .75rem;
+        margin-top: 1.5rem;
+    }
+
+    .cx-hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .65rem .95rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.7);
+        border: 1px solid rgba(0,0,0,.05);
+        color: var(--navy);
+        font-size: .8rem;
+        box-shadow: 0 14px 30px rgba(0,0,0,.04);
+    }
+
+        .cx-hero-pill i {
+            color: var(--gold);
+        }
+
+    .cx-form-shell,
+    .cx-info-card {
+        backdrop-filter: blur(16px);
+    }
+
+    .cx-form-shell {
+        background: rgba(255,255,255,.82);
+        border-radius: 30px;
+        box-shadow: 0 24px 60px rgba(0,0,0,.07);
+    }
+
+    .cx-form-inner {
+        position: relative;
+        z-index: 1;
+    }
+
+    .cx-info-card {
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 26%),
+            linear-gradient(155deg, var(--navy-deep), var(--navy-mid));
+        border-radius: 30px;
+        border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .cx-info-intro {
+        color: rgba(255,255,255,.62);
+        line-height: 1.8;
+        font-size: .88rem;
+        margin: 0 0 1.1rem;
+    }
+
+    .cx-info-item,
+    .cx-map-wrap,
+    .cx-trust-item {
+        box-shadow: 0 14px 28px rgba(0,0,0,.08);
+    }
+
+    .cx-process {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+    .cx-process-title {
+        margin: 0 0 1rem;
+        color: var(--gold-light);
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .cx-process-step {
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: .85rem;
+        align-items: start;
+        padding: .8rem 0;
+        border-top: 1px solid rgba(255,255,255,.06);
+    }
+
+        .cx-process-step:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .cx-process-step strong,
+        .cx-process-step span {
+            display: block;
+        }
+
+        .cx-process-step strong {
+            color: var(--white);
+            font-size: .88rem;
+            margin-bottom: .2rem;
+        }
+
+        .cx-process-step span {
+            color: rgba(255,255,255,.6);
+            font-size: .8rem;
+            line-height: 1.6;
+        }
+
+    .cx-process-num {
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.12);
+        color: var(--gold-light);
+        font-size: .72rem;
+        font-weight: 700;
+    }
+
+    @@media (max-width: 575.98px) {
+        .cx-hero-pills {
+            justify-content: flex-start;
+        }
+
+        .cx-hero-pill {
             width: 100%;
             justify-content: center;
         }

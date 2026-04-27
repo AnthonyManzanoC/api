@@ -4,113 +4,520 @@
 
 <PageTitle>Servicios — Lamilla Escudero</PageTitle>
 
-@* ── Hero de página ────────────────────────────────────── *@
-<section style="padding: 4rem 0 2rem; background: var(--navy); color: white;">
-    <div class="container text-center">
-        <span class="section-eyebrow" style="color: var(--gold-light);">Lo que ofrecemos</span>
-        <h1 style="font-family: var(--font-display); font-size: 3rem; font-weight: 600; margin-top:.5rem; color: white;">
-            Servicios Jurídicos
-        </h1>
-        <p style="color: rgba(255,255,255,.6); max-width: 520px; margin: 1rem auto 0; font-size: 1.05rem;">
-            Soluciones legales integrales diseñadas para proteger tus derechos y alcanzar
-            los mejores resultados posibles.
-        </p>
+<section class="svc-hero">
+    <div class="svc-hero-noise" aria-hidden="true"></div>
+    <div class="container">
+        <div class="svc-hero-grid">
+            <div class="svc-hero-copy">
+                <span class="svc-eyebrow">Lo que ofrecemos</span>
+                <h1 class="svc-title">
+                    Servicios jurídicos con <em>dirección estratégica</em>
+                </h1>
+                <p class="svc-subtitle">
+                    Construimos soluciones legales claras, sobrias y técnicamente sólidas
+                    para personas, familias y organizaciones que necesitan actuar con seguridad.
+                </p>
+                <div class="svc-hero-actions">
+                    <a href="/contacto" class="btn-primary-gold">
+                        <i class="bi bi-send me-2"></i>Agendar consulta
+                    </a>
+                    <a href="#lista-servicios" class="svc-outline-btn">
+                        <i class="bi bi-arrow-down-circle me-2"></i>Explorar especialidades
+                    </a>
+                </div>
+                <div class="svc-trust-row">
+                    <span class="svc-trust-pill"><i class="bi bi-shield-check"></i>Atención confidencial</span>
+                    <span class="svc-trust-pill"><i class="bi bi-diagram-3"></i>Estrategias a medida</span>
+                    <span class="svc-trust-pill"><i class="bi bi-stars"></i>Experiencia premium</span>
+                </div>
+            </div>
+
+            <div class="svc-hero-panel">
+                <span class="svc-panel-tag">Cobertura de alto nivel</span>
+                <h2 class="svc-panel-title">Defensa, prevención y acompañamiento legal integral.</h2>
+                <p class="svc-panel-copy">
+                    Cada servicio se aborda con preparación previa, análisis fino del riesgo
+                    y una hoja de ruta diseñada para proteger tus intereses con criterio profesional.
+                </p>
+                <div class="svc-panel-list">
+                    <div class="svc-panel-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>Diagnóstico claro del caso desde la primera conversación.</span>
+                    </div>
+                    <div class="svc-panel-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>Comunicación directa, sobria y orientada a decisiones.</span>
+                    </div>
+                    <div class="svc-panel-item">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>Rigor técnico con presencia humana y ejecutiva.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 
-@* ── Contenido principal ──────────────────────────────── *@
-<section style="padding: 4rem 0; background: var(--ivory);">
+<section class="svc-overview">
     <div class="container">
+        <div class="svc-overview-grid">
+            <div class="svc-metric-card">
+                <span class="svc-metric-label">Enfoque</span>
+                <h3 class="svc-metric-title">Asesoría estratégica</h3>
+                <p class="svc-metric-copy">No solo resolvemos trámites o litigios: estructuramos decisiones jurídicas con visión de largo plazo.</p>
+            </div>
+            <div class="svc-metric-card">
+                <span class="svc-metric-label">Método</span>
+                <h3 class="svc-metric-title">Preparación rigurosa</h3>
+                <p class="svc-metric-copy">Cada asunto se estudia con profundidad para sostener posiciones firmes, ordenadas y persuasivas.</p>
+            </div>
+            <div class="svc-metric-card">
+                <span class="svc-metric-label">Experiencia</span>
+                <h3 class="svc-metric-title">Acompañamiento premium</h3>
+                <p class="svc-metric-copy">Una experiencia jurídica pensada para transmitir tranquilidad, claridad y control en todo momento.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="svc-section" id="lista-servicios">
+    <div class="container">
+        <div class="section-header svc-section-header">
+            <span class="section-eyebrow">Especialidades del estudio</span>
+            <h2 class="section-title">Áreas de servicio</h2>
+            <div class="section-title-line"></div>
+            <p class="svc-section-copy">
+                Selecciona el área que más se aproxime a tu necesidad. Si tu situación requiere
+                una revisión interdisciplinaria, diseñaremos una estrategia combinada.
+            </p>
+        </div>
+
         <div class="row justify-content-center">
             <div class="col-lg-9">
+                <div class="svc-content-shell">
 
-                @if (servicios is null)
-                {
-                    <div class="text-center py-5">
-                        <div class="spinner-border" style="color: var(--gold);"></div>
-                        <p class="mt-3 text-muted">Cargando servicios...</p>
-                    </div>
-                }
-                else if (!servicios.Any())
-                {
-                    @* Acordeón estático de respaldo *@
-                    <div class="servicios-acordeon">
-                        @foreach (var (s, idx) in staticServices.Select((x, i) => (x, i)))
-                        {
-                            var isOpen = openIdx == idx;
-                            <div class="servicio-item @(isOpen ? "servicio-item-open" : "")"
-                                 @onclick="() => Toggle(idx)">
-                                <div class="servicio-header">
-                                    <div class="servicio-icon-wrap">
-                                        <i class="bi @s.Icono"></i>
+                    @if (servicios is null)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border" style="color: var(--gold);"></div>
+                            <p class="mt-3 text-muted">Cargando servicios...</p>
+                        </div>
+                    }
+                    else if (!servicios.Any())
+                    {
+                        @* Acordeón estático de respaldo *@
+                        <div class="servicios-acordeon">
+                            @foreach (var (s, idx) in staticServices.Select((x, i) => (x, i)))
+                            {
+                                var isOpen = openIdx == idx;
+                                <div class="servicio-item @(isOpen ? "servicio-item-open" : "")"
+                                     @onclick="() => Toggle(idx)">
+                                    <div class="servicio-header">
+                                        <div class="servicio-icon-wrap">
+                                            <i class="bi @s.Icono"></i>
+                                        </div>
+                                        <div class="servicio-titulo-wrap">
+                                            <h3 class="servicio-titulo">@s.Titulo</h3>
+                                            <p class="servicio-desc-corta">@s.Desc</p>
+                                        </div>
+                                        <div class="servicio-chevron">
+                                            <i class="bi @(isOpen ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                        </div>
                                     </div>
-                                    <div class="servicio-titulo-wrap">
-                                        <h3 class="servicio-titulo">@s.Titulo</h3>
-                                        <p class="servicio-desc-corta">@s.Desc</p>
-                                    </div>
-                                    <div class="servicio-chevron">
-                                        <i class="bi @(isOpen ? "bi-chevron-up" : "bi-chevron-down")"></i>
-                                    </div>
+                                    @if (isOpen)
+                                    {
+                                        <div class="servicio-detalles">
+                                            <p>@s.Detalles</p>
+                                            <a href="/contacto" class="servicio-cta">
+                                                <i class="bi bi-chat-text me-2"></i>Consultar sobre este servicio
+                                            </a>
+                                        </div>
+                                    }
                                 </div>
-                                @if (isOpen)
-                                {
-                                    <div class="servicio-detalles">
-                                        <p>@s.Detalles</p>
-                                        <a href="/contacto" class="servicio-cta">
-                                            <i class="bi bi-chat-text me-2"></i>Consultar sobre este servicio
-                                        </a>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="servicios-acordeon">
+                            @foreach (var (s, idx) in servicios.Select((x, i) => (x, i)))
+                            {
+                                var isOpen = openServId == s.Id;
+                                <div class="servicio-item @(isOpen ? "servicio-item-open" : "")"
+                                     @onclick="() => ToggleServ(s.Id)">
+                                    <div class="servicio-header">
+                                        <div class="servicio-icon-wrap">
+                                            <i class="bi @(s.Icono ?? "bi-briefcase")"></i>
+                                        </div>
+                                        <div class="servicio-titulo-wrap">
+                                            <h3 class="servicio-titulo">@s.Titulo</h3>
+                                            <p class="servicio-desc-corta">@s.DescripcionCorta</p>
+                                        </div>
+                                        <div class="servicio-chevron">
+                                            <i class="bi @(isOpen ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                        </div>
                                     </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
-                else
-                {
-                    <div class="servicios-acordeon">
-                        @foreach (var (s, idx) in servicios.Select((x, i) => (x, i)))
-                        {
-                            var isOpen = openServId == s.Id;
-                            <div class="servicio-item @(isOpen ? "servicio-item-open" : "")"
-                                 @onclick="() => ToggleServ(s.Id)">
-                                <div class="servicio-header">
-                                    <div class="servicio-icon-wrap">
-                                        <i class="bi @(s.Icono ?? "bi-briefcase")"></i>
-                                    </div>
-                                    <div class="servicio-titulo-wrap">
-                                        <h3 class="servicio-titulo">@s.Titulo</h3>
-                                        <p class="servicio-desc-corta">@s.DescripcionCorta</p>
-                                    </div>
-                                    <div class="servicio-chevron">
-                                        <i class="bi @(isOpen ? "bi-chevron-up" : "bi-chevron-down")"></i>
-                                    </div>
+                                    @if (isOpen && !string.IsNullOrWhiteSpace(s.Detalles))
+                                    {
+                                        <div class="servicio-detalles">
+                                            <p>@s.Detalles</p>
+                                            <a href="/contacto" class="servicio-cta">
+                                                <i class="bi bi-chat-text me-2"></i>Consultar sobre este servicio
+                                            </a>
+                                        </div>
+                                    }
                                 </div>
-                                @if (isOpen && !string.IsNullOrWhiteSpace(s.Detalles))
-                                {
-                                    <div class="servicio-detalles">
-                                        <p>@s.Detalles</p>
-                                        <a href="/contacto" class="servicio-cta">
-                                            <i class="bi bi-chat-text me-2"></i>Consultar sobre este servicio
-                                        </a>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
+                            }
+                        </div>
+                    }
 
+                </div>
             </div>
         </div>
 
-        @* CTA *@
-        <div class="text-center mt-5 pt-3" style="border-top: 1px solid var(--light-gray);">
-            <p class="text-muted mb-3">¿No encontraste lo que buscas?</p>
-            <a href="/contacto" class="btn-primary-gold">
-                <i class="bi bi-send me-2"></i>Contáctanos directamente
-            </a>
+        <div class="svc-bottom-band">
+            <div>
+                <span class="svc-bottom-label">Consulta a medida</span>
+                <h3 class="svc-bottom-title">Si tu necesidad no encaja en una sola categoría, la diseñamos contigo.</h3>
+                <p class="svc-bottom-copy">Analizamos contextos complejos y proponemos una ruta jurídica clara, ejecutiva y personalizada.</p>
+            </div>
+            <div class="svc-bottom-actions">
+                <a href="/contacto" class="btn-primary-gold">
+                    <i class="bi bi-send me-2"></i>Contáctanos directamente
+                </a>
+                <a href="/" class="svc-outline-btn svc-outline-btn-light">
+                    <i class="bi bi-house-door me-2"></i>Volver al inicio
+                </a>
+            </div>
         </div>
     </div>
 </section>
+
+<style>
+    .svc-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 5.5rem 0 3rem;
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 22%),
+            linear-gradient(140deg, var(--navy-deep), var(--navy-mid));
+        color: var(--white);
+    }
+
+    .svc-hero-noise {
+        position: absolute;
+        inset: 0;
+        opacity: .08;
+        background-image: radial-gradient(circle, rgba(255,255,255,.7) 1px, transparent 1px);
+        background-size: 22px 22px;
+        pointer-events: none;
+    }
+
+    .svc-hero-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(320px, .9fr);
+        gap: 2rem;
+        align-items: center;
+    }
+
+    .svc-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        padding: .45rem .95rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.12);
+        color: var(--gold-light);
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+    }
+
+    .svc-title {
+        margin: 1.1rem 0 1rem;
+        font-family: var(--font-display);
+        font-size: clamp(2.6rem, 5vw, 4.6rem);
+        line-height: .95;
+        color: var(--white);
+    }
+
+        .svc-title em {
+            color: var(--gold-light);
+            font-style: italic;
+            font-weight: 500;
+        }
+
+    .svc-subtitle {
+        max-width: 620px;
+        margin: 0;
+        font-size: 1.02rem;
+        line-height: 1.9;
+        color: rgba(255,255,255,.72);
+    }
+
+    .svc-hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .9rem;
+        margin-top: 2rem;
+    }
+
+    .svc-outline-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        padding: 0 1.25rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.16);
+        background: rgba(255,255,255,.06);
+        color: var(--white);
+        font-size: .88rem;
+        font-weight: 600;
+        transition: transform var(--transition), background var(--transition), border-color var(--transition), color var(--transition);
+    }
+
+        .svc-outline-btn:hover {
+            transform: translateY(-2px);
+            color: var(--white);
+            background: rgba(255,255,255,.1);
+            border-color: rgba(255,255,255,.3);
+        }
+
+    .svc-outline-btn-light {
+        border-color: rgba(0,0,0,.08);
+        background: rgba(255,255,255,.72);
+        color: var(--navy);
+    }
+
+        .svc-outline-btn-light:hover {
+            color: var(--navy);
+            background: rgba(255,255,255,.94);
+            border-color: rgba(0,0,0,.12);
+        }
+
+    .svc-trust-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+        margin-top: 2rem;
+    }
+
+    .svc-trust-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .6rem .9rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.1);
+        color: rgba(255,255,255,.84);
+        font-size: .78rem;
+    }
+
+        .svc-trust-pill i {
+            color: var(--gold-light);
+        }
+
+    .svc-hero-panel {
+        padding: 1.6rem;
+        border-radius: 28px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.12);
+        box-shadow: 0 24px 54px rgba(0,0,0,.18);
+        backdrop-filter: blur(16px);
+    }
+
+    .svc-panel-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: .42rem .8rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.1);
+        color: var(--gold-light);
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+    }
+
+    .svc-panel-title {
+        margin: 1rem 0 .8rem;
+        font-family: var(--font-display);
+        font-size: 2rem;
+        line-height: 1.02;
+        color: var(--white);
+    }
+
+    .svc-panel-copy {
+        color: rgba(255,255,255,.68);
+        line-height: 1.8;
+        font-size: .92rem;
+        margin-bottom: 1.1rem;
+    }
+
+    .svc-panel-list {
+        display: flex;
+        flex-direction: column;
+        gap: .8rem;
+    }
+
+    .svc-panel-item {
+        display: flex;
+        gap: .75rem;
+        align-items: flex-start;
+        padding: .85rem .95rem;
+        border-radius: 18px;
+        background: rgba(255,255,255,.08);
+        color: rgba(255,255,255,.82);
+        font-size: .86rem;
+    }
+
+        .svc-panel-item i {
+            color: var(--gold-light);
+            margin-top: 2px;
+        }
+
+    .svc-overview {
+        padding: 0 0 2rem;
+        background: var(--ivory);
+    }
+
+    .svc-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-top: -2rem;
+    }
+
+    .svc-metric-card {
+        padding: 1.5rem;
+        border-radius: 26px;
+        background: rgba(255,255,255,.84);
+        border: 1px solid rgba(0,0,0,.06);
+        box-shadow: 0 18px 44px rgba(0,0,0,.05);
+        backdrop-filter: blur(14px);
+    }
+
+    .svc-metric-label {
+        display: inline-block;
+        margin-bottom: .8rem;
+        color: var(--gold);
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+    }
+
+    .svc-metric-title {
+        margin: 0 0 .55rem;
+        font-family: var(--font-display);
+        font-size: 1.55rem;
+        color: var(--navy);
+    }
+
+    .svc-metric-copy,
+    .svc-section-copy,
+    .svc-bottom-copy {
+        margin: 0;
+        color: var(--silver);
+        line-height: 1.8;
+        font-size: .93rem;
+    }
+
+    .svc-section {
+        padding: 3rem 0 5rem;
+        background: var(--ivory);
+    }
+
+    .svc-section-header {
+        max-width: 760px;
+        margin: 0 auto 2.6rem;
+    }
+
+    .svc-content-shell {
+        padding: 1.4rem;
+        border-radius: 30px;
+        background: rgba(255,255,255,.72);
+        border: 1px solid rgba(0,0,0,.05);
+        box-shadow: 0 22px 50px rgba(0,0,0,.05);
+    }
+
+    .svc-bottom-band {
+        margin-top: 2rem;
+        padding: 1.6rem 1.8rem;
+        border-radius: 28px;
+        background: rgba(255,255,255,.84);
+        border: 1px solid rgba(0,0,0,.06);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 1.5rem;
+        align-items: center;
+        box-shadow: 0 18px 44px rgba(0,0,0,.05);
+    }
+
+    .svc-bottom-label {
+        display: inline-block;
+        margin-bottom: .55rem;
+        color: var(--gold);
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+    }
+
+    .svc-bottom-title {
+        margin: 0 0 .45rem;
+        font-family: var(--font-display);
+        font-size: 1.85rem;
+        color: var(--navy);
+    }
+
+    .svc-bottom-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .85rem;
+        justify-content: flex-end;
+    }
+
+    @@media (max-width: 991px) {
+        .svc-hero-grid,
+        .svc-overview-grid,
+        .svc-bottom-band {
+            grid-template-columns: 1fr;
+        }
+
+        .svc-bottom-actions {
+            justify-content: flex-start;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .svc-hero {
+            padding-top: 4.8rem;
+        }
+
+        .svc-content-shell,
+        .svc-metric-card,
+        .svc-bottom-band,
+        .svc-hero-panel {
+            border-radius: 22px;
+        }
+
+        .svc-hero-actions,
+        .svc-bottom-actions {
+            flex-direction: column;
+        }
+
+        .svc-hero-actions > a,
+        .svc-bottom-actions > a {
+            width: 100%;
+        }
+    }
+</style>
 
 @code {
     private List<LamillaEscudero.Application.Models.Servicios.ServicioOfrecidoResponse>? servicios;

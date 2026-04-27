@@ -1,7 +1,21 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <div class="public-shell">
     <header class="public-header">
+        <div class="public-topline">
+            <div class="container-fluid px-4">
+                <div class="public-topline-inner">
+                    <div class="public-topline-copy">
+                        <span class="public-topline-pill">
+                            <i class="bi bi-shield-check me-1"></i>Estudio Jurídico Premium
+                        </span>
+                        <span class="public-topline-text">Babahoyo · Cobertura nacional · Estrategia legal de alto nivel</span>
+                    </div>
+                    <a href="/contacto" class="public-topline-link">Primera consulta orientativa</a>
+                </div>
+            </div>
+        </div>
+
         <div class="container-fluid px-4">
             <nav class="public-nav">
                 <a href="/" class="public-brand">
@@ -12,16 +26,23 @@
                     </div>
                 </a>
 
-                <ul class="public-nav-links">
-                    <li><NavLink class="public-nav-link" href="/" Match="NavLinkMatch.All">Inicio</NavLink></li>
-                    <li><NavLink class="public-nav-link" href="/servicios">Servicios</NavLink></li>
-                    <li><NavLink class="public-nav-link" href="/contacto">Contacto</NavLink></li>
-                    <li>
-                        <a href="/login" class="public-nav-cta">
-                            <i class="bi bi-person-lock me-1"></i>Acceso Interno
-                        </a>
-                    </li>
-                </ul>
+                <div class="public-nav-shell">
+                    <ul class="public-nav-links">
+                        <li><NavLink class="public-nav-link" href="/" Match="NavLinkMatch.All">Inicio</NavLink></li>
+                        <li><NavLink class="public-nav-link" href="/servicios">Servicios</NavLink></li>
+                        <li><NavLink class="public-nav-link" href="/contacto">Contacto</NavLink></li>
+                        <li>
+                            <a href="/login" class="public-nav-cta">
+                                <i class="bi bi-person-lock me-1"></i>Acceso Interno
+                            </a>
+                        </li>
+                    </ul>
+
+                    <div class="public-nav-trust">
+                        <span><i class="bi bi-stars"></i>Tecnología legal</span>
+                        <span><i class="bi bi-person-heart"></i>Trato humano</span>
+                    </div>
+                </div>
             </nav>
         </div>
     </header>
@@ -31,18 +52,65 @@
     </main>
 
     <footer class="public-footer">
+        <div class="footer-noise" aria-hidden="true"></div>
         <div class="container">
-            <div class="footer-inner">
-                <div class="footer-brand">
-                    <span class="footer-mono">LE</span>
-                    <div>
-                        <p class="footer-name">Lamilla Escudero &amp; Asociados</p>
-                        <p class="footer-tagline">Solidez jurídica, trato humano.</p>
+            <div class="footer-grid">
+                <div class="footer-column footer-brand-column">
+                    <div class="footer-brand">
+                        <span class="footer-mono">LE</span>
+                        <div>
+                            <p class="footer-name">Lamilla Escudero &amp; Asociados</p>
+                            <p class="footer-tagline">Solidez jurídica, trato humano.</p>
+                        </div>
+                    </div>
+                    <p class="footer-description">
+                        Defensa, consultoría y acompañamiento legal con visión estratégica,
+                        ejecución impecable y una experiencia pensada para transmitir confianza desde el primer contacto.
+                    </p>
+                    <div class="footer-pill-row">
+                        <span class="footer-pill"><i class="bi bi-award"></i>Alta preparación técnica</span>
+                        <span class="footer-pill"><i class="bi bi-shield-lock"></i>Confidencialidad absoluta</span>
                     </div>
                 </div>
+
+                <div class="footer-column">
+                    <p class="footer-heading">Navegación</p>
+                    <div class="footer-links">
+                        <a href="/">Inicio</a>
+                        <a href="/servicios">Servicios</a>
+                        <a href="/contacto">Contacto</a>
+                        <a href="/login">Acceso Interno</a>
+                    </div>
+                </div>
+
+                <div class="footer-column">
+                    <p class="footer-heading">Fortalezas</p>
+                    <div class="footer-links footer-links-muted">
+                        <span>Litigio estratégico</span>
+                        <span>Asesoría preventiva</span>
+                        <span>Atención personalizada</span>
+                        <span>Presencia profesional impecable</span>
+                    </div>
+                </div>
+
+                <div class="footer-column footer-cta-column">
+                    <p class="footer-heading">Listos para ayudarte</p>
+                    <p class="footer-cta-copy">
+                        Una conversación clara y bien dirigida puede cambiar el rumbo de un caso.
+                    </p>
+                    <div class="footer-cta-actions">
+                        <a href="/contacto" class="footer-cta-primary">Solicitar consulta</a>
+                        <a href="/servicios" class="footer-cta-secondary">Explorar especialidades</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-meta">
                 <p class="footer-copy">&copy; @DateTime.Now.Year Todos los derechos reservados.</p>
+                <p class="footer-legal">Diseño orientado a confianza, claridad y excelencia profesional.</p>
             </div>
         </div>
     </footer>
+
     <LamillaEscudero.Web.Components.Pages.ChatbotPublico />
 </div>

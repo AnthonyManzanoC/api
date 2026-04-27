@@ -231,6 +231,11 @@
                     Más de una década acompañando a nuestros clientes en las decisiones legales
                     más importantes de sus vidas. Estrategia clara, resultados concretos.
                 </p>
+                <div class="hero-signal-row">
+                    <span class="hero-signal-pill"><i class="bi bi-stars"></i>Litigio estratégico</span>
+                    <span class="hero-signal-pill"><i class="bi bi-shield-lock"></i>Confidencialidad absoluta</span>
+                    <span class="hero-signal-pill"><i class="bi bi-person-heart"></i>Atención cercana</span>
+                </div>
                 <div class="hero-actions">
                     <a href="/contacto" class="btn-hero-primary">
                         <span class="btn-hero-glow"></span>
@@ -300,6 +305,13 @@
                         </div>
                     }
                 </div>
+                <div class="hcc-note">
+                    Diseñamos estrategias para asuntos civiles, penales, laborales, familiares y mercantiles con preparación previa del caso.
+                </div>
+                <div class="hcc-badges">
+                    <span><i class="bi bi-lightning-charge-fill"></i>Respuesta ágil</span>
+                    <span><i class="bi bi-lock-fill"></i>Trato reservado</span>
+                </div>
                 <div class="hcc-free-badge">
                     <i class="bi bi-check-circle-fill me-1"></i>Primera consulta sin costo
                 </div>
@@ -311,7 +323,7 @@
     </div>
     <div class="hero-wave" aria-hidden="true">
         <svg viewBox="0 0 1440 80" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#F8F6F1" />
+            <path class="hero-wave-path" d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" />
         </svg>
     </div>
     <a href="#nosotros" class="hero-scroll-indicator" aria-label="Ir a nosotros">
@@ -2600,6 +2612,179 @@
 
         .cta-gold-title {
             font-size: 1.75rem;
+        }
+    }
+
+    /* ════════════════════════════════════════════════════════
+       HOME — Premium overrides
+       ════════════════════════════════════════════════════════ */
+    .hero-v2 {
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 22%),
+            linear-gradient(155deg, var(--navy-deep), var(--navy-mid));
+        color: var(--white);
+        padding-top: 6rem;
+        padding-bottom: 4.5rem;
+    }
+
+    .hero-wave-path {
+        fill: var(--ivory);
+    }
+
+    .hero-title,
+    .hero-subtitle {
+        max-width: 680px;
+    }
+
+    .hero-title {
+        color: var(--white);
+        font-size: clamp(3.3rem, 7vw, 5.9rem);
+        letter-spacing: -.04em;
+    }
+
+    .hero-subtitle {
+        color: rgba(255,255,255,.68);
+    }
+
+    .hero-signal-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .75rem;
+        margin: 1.35rem 0 0;
+    }
+
+    .hero-signal-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .58rem .92rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.12);
+        color: rgba(255,255,255,.86);
+        font-size: .78rem;
+        box-shadow: 0 14px 28px rgba(0,0,0,.08);
+    }
+
+        .hero-signal-pill i {
+            color: var(--gold-light);
+        }
+
+    .hero-stats-bar,
+    .hero-contact-card {
+        backdrop-filter: blur(18px);
+    }
+
+    .hero-stats-bar {
+        margin-top: 2rem;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.1);
+        box-shadow: 0 20px 42px rgba(0,0,0,.12);
+    }
+
+    .hero-contact-card {
+        background: rgba(255,255,255,.9);
+        border-radius: 30px;
+        border: 1px solid rgba(255,255,255,.75);
+        box-shadow: 0 28px 62px rgba(0,0,0,.18);
+    }
+
+    .hcc-note {
+        margin-bottom: .95rem;
+        color: var(--silver);
+        line-height: 1.75;
+        font-size: .87rem;
+    }
+
+    .hcc-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .6rem;
+        margin-bottom: 1rem;
+    }
+
+        .hcc-badges span {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .45rem .8rem;
+            border-radius: 999px;
+            background: rgba(0,0,0,.04);
+            color: var(--navy);
+            font-size: .74rem;
+            font-weight: 600;
+        }
+
+        .hcc-badges i {
+            color: var(--gold);
+        }
+
+    .about-section,
+    .practice-section,
+    .why-section,
+    .team-section,
+    .trayectoria-section,
+    .cta-gold-band {
+        position: relative;
+    }
+
+    .about-section,
+    .practice-section,
+    .why-section,
+    .team-section {
+        padding-top: 6rem;
+        padding-bottom: 6rem;
+    }
+
+    .section-header {
+        max-width: 760px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .section-title-line,
+    .tray-divider-gold {
+        box-shadow: 0 10px 24px rgba(0,0,0,.1);
+    }
+
+    .practice-card-v2,
+    .why-feature,
+    .team-card-v2,
+    .testimonial-card,
+    .testi-form-card {
+        box-shadow: 0 22px 48px rgba(0,0,0,.05);
+    }
+
+    .testimonial-card,
+    .testi-form-card {
+        background: rgba(255,255,255,.86);
+        backdrop-filter: blur(16px);
+    }
+
+    .values-v2 {
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,.06), transparent 24%),
+            linear-gradient(160deg, var(--navy-deep), var(--navy-mid));
+    }
+
+    .cta-gold-band {
+        background:
+            linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,0)),
+            linear-gradient(135deg, var(--gold), var(--gold-light));
+    }
+
+    @@media (max-width: 700px) {
+        .hero-signal-row {
+            flex-direction: column;
+        }
+
+        .hero-signal-pill {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .hcc-badges {
+            flex-direction: column;
         }
     }
 </style>
