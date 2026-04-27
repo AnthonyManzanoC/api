@@ -88,6 +88,9 @@
                     <div class="miembro-field-group miembro-field-xs">
                         <label class="miembro-label">Orden</label>
                         <input class="miembro-input" type="number" @bind="form.Orden" min="0" />
+                        <span class="miembro-field-hint">
+                            Los 2 órdenes más bajos se muestran primero en el Home como socios principales.
+                        </span>
                     </div>
                 </div>
                 <div class="miembro-field-group">
@@ -302,6 +305,9 @@
                 <i class="bi bi-people-fill me-2" style="color:var(--gold);"></i>Equipo del Estudio
             </h1>
             <p class="miembro-page-sub">Gestiona los perfiles públicos de los abogados.</p>
+            <span class="miembro-field-hint d-block mt-2">
+                Cada miembro genera automáticamente su página dedicada en <code>/perfil/{slug}</code>.
+            </span>
         </div>
         <button class="miembro-btn-new" @onclick="NuevoMiembro">
             <i class="bi bi-person-plus-fill me-2"></i>Nuevo miembro
@@ -378,6 +384,10 @@
                         <span class="miembro-order-pill">@m.Orden</span>
                     </div>
                     <div class="miembro-card-actions">
+                        <a class="miembro-action-btn miembro-action-edit"
+                           href="@($"/perfil/{m.Nombres.ToSlug()}")" target="_blank" title="Vista pública">
+                            <i class="bi bi-box-arrow-up-right"></i>
+                        </a>
                         <button class="miembro-action-btn miembro-action-edit"
                                 @onclick="() => Editar(m)" title="Editar">
                             <i class="bi bi-pencil-fill"></i>

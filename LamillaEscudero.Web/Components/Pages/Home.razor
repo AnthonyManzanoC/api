@@ -7,8 +7,10 @@
 @inject Microsoft.JSInterop.IJSRuntime JS
 @implements IDisposable
 @rendermode InteractiveServer
+@using System.Linq
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using LamillaEscudero.Application.Common
 
 <PageTitle>Abogados en Ecuador |Babahoyo - Los Ríos, Guayaquil, Quito | Lamilla Escudero &amp; Asociados</PageTitle>
 <HeadContent>
@@ -59,7 +61,6 @@
             { "@@type": "City", "name": "Mocache" },
             { "@@type": "City", "name": "Buena Fe" },
             { "@@type": "City", "name": "Catarama" },
-
             { "@@type": "City", "name": "Puebloviejo" },
             { "@@type": "State", "name": "Los Ríos" },
             { "@@type": "State", "name": "Guayas" },
@@ -72,144 +73,14 @@
 </HeadContent>
 
 @* ════════════════════════════════════════════════════════════════
-   OVERLAY — PERFIL COMPLETO DEL ABOGADO
-   ════════════════════════════════════════════════════════════════ *@
-@if (overlayMiembro is not null)
-{
-    <div class="bio-overlay" @onclick="CerrarOverlay">
-        <div class="bio-panel" @onclick:stopPropagation>
-            <button class="bio-close" @onclick="CerrarOverlay"><i class="bi bi-x-lg"></i></button>
-            <div class="bio-left">
-                <div class="bio-photo-wrap">
-                    @{
-                        var imgSrc = !string.IsNullOrWhiteSpace(overlayMiembro.PhotoData)
-                        ? overlayMiembro.PhotoData
-                        : !string.IsNullOrWhiteSpace(overlayMiembro.FotoUrl)
-                        ? overlayMiembro.FotoUrl : null;
-                    }
-                    @if (imgSrc is not null)
-                    {
-                        <img src="@imgSrc" alt="@overlayMiembro.Nombres" class="bio-photo" />
-                    }
-                    else
-                    {
-                        <div class="bio-initials">@GetInitials(overlayMiembro.Nombres)</div>
-                    }
-                    <div class="bio-photo-ring"></div>
-                </div>
-                <h2 class="bio-name">@overlayMiembro.Nombres</h2>
-                <p class="bio-cargo">@overlayMiembro.Cargo</p>
-                @if (!string.IsNullOrWhiteSpace(overlayMiembro.FraseDestacada))
-                {
-                    <blockquote class="bio-frase">
-                        <i class="bi bi-quote bio-quote-icon"></i>@overlayMiembro.FraseDestacada
-                    </blockquote>
-                }
-                <div class="bio-contact-links">
-                    @if (!string.IsNullOrWhiteSpace(overlayMiembro.Email))
-                    {
-                        <a href="mailto:@overlayMiembro.Email" class="bio-contact-link">
-                            <i class="bi bi-envelope-fill"></i><span>@overlayMiembro.Email</span>
-                        </a>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(overlayMiembro.LinkedIn))
-                    {
-                        <a href="@overlayMiembro.LinkedIn" target="_blank" class="bio-contact-link bio-linkedin">
-                            <i class="bi bi-linkedin"></i><span>LinkedIn</span>
-                        </a>
-                    }
-                </div>
-            </div>
-            <div class="bio-right">
-                <div class="bio-tabs">
-                    <button class="bio-tab @(bioTab == "bio" ? "active" : "")" @onclick='() => bioTab = "bio"'>
-                        <i class="bi bi-person-lines-fill me-1"></i>Biografía
-                    </button>
-                    @if (overlayTimeline.Any())
-                    {
-                        <button class="bio-tab @(bioTab == "exp" ? "active" : "")" @onclick='() => bioTab = "exp"'>
-                            <i class="bi bi-briefcase-fill me-1"></i>Trayectoria
-                        </button>
-                    }
-                    @if (overlayEducacion.Any())
-                    {
-                        <button class="bio-tab @(bioTab == "edu" ? "active" : "")" @onclick='() => bioTab = "edu"'>
-                            <i class="bi bi-mortarboard-fill me-1"></i>Formación
-                        </button>
-                    }
-                </div>
-                @if (bioTab == "bio")
-                {
-                    <div class="bio-content-section">
-                        @if (!string.IsNullOrWhiteSpace(overlayMiembro.BiografiaLarga))
-                        {
-                            <p class="bio-text">@overlayMiembro.BiografiaLarga</p>
-                        }
-                        else if (!string.IsNullOrWhiteSpace(overlayMiembro.BiografiaCompleta))
-                        {
-                            <p class="bio-text">@overlayMiembro.BiografiaCompleta</p>
-                        }
-                        else
-                        {
-                            <p class="bio-text bio-text-empty">Perfil en preparación.</p>
-                        }
-                    </div>
-                }
-                @if (bioTab == "exp")
-                {
-                    <div class="bio-timeline">
-                        @foreach (var item in overlayTimeline)
-                        {
-                            <div class="bio-tl-item">
-                                <div class="bio-tl-dot"></div>
-                                <div class="bio-tl-year">@item.Anio</div>
-                                <div class="bio-tl-body">
-                                    <p class="bio-tl-titulo">@item.Titulo</p>
-                                    @if (!string.IsNullOrWhiteSpace(item.Descripcion))
-                                    {
-                                        <p class="bio-tl-desc">@item.Descripcion</p>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-                @if (bioTab == "edu")
-                {
-                    <div class="bio-educacion">
-                        @foreach (var item in overlayEducacion)
-                        {
-                            <div class="bio-edu-item">
-                                <div class="bio-edu-icon"><i class="bi bi-award-fill"></i></div>
-                                <div class="bio-edu-body">
-                                    <p class="bio-edu-titulo">@item.Titulo</p>
-                                    @if (!string.IsNullOrWhiteSpace(item.Institucion))
-                                    {
-                                        <p class="bio-edu-inst">@item.Institucion</p>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(item.Anio))
-                                    {
-                                        <p class="bio-edu-anio">@item.Anio</p>
-                                    }
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
-}
-
-@* ════════════════════════════════════════════════════════════════
    HERO
    ════════════════════════════════════════════════════════════════ *@
 <section class="hero-section hero-v2" id="inicio">
     <div class="hero-geo-pattern" aria-hidden="true"></div>
     <div class="hero-bg-pattern"></div>
-    <div class="container" style="position:relative;z-index:2;">
+    <div class="container public-section-shell mx-auto" style="position:relative;z-index:2;">
         <div class="hero-inner">
-            <div class="hero-copy">
+            <div class="hero-copy reveal">
                 @if (config is not null && (!string.IsNullOrWhiteSpace(config.PhotoUrl) || !string.IsNullOrWhiteSpace(config.LogoUrl)))
                 {
                     <div class="home-brand-logo animate-fade-in">
@@ -247,11 +118,11 @@
                 </div>
                 <div class="hero-stats-bar">
                     <div class="hero-stat">
-                        <strong class="counter" data-target="15">0</strong><span>Años</span>
+                        <strong class="counter" data-target="15" data-prefix="" data-suffix="+">0</strong><span>Años de experiencia</span>
                     </div>
                     <div class="hero-stat-div"></div>
                     <div class="hero-stat">
-                        <strong class="counter" data-target="500">0</strong><span>Casos</span>
+                        <strong class="counter" data-target="500" data-prefix="+">0</strong><span>Casos gestionados</span>
                     </div>
                     <div class="hero-stat-div"></div>
                     <div class="hero-stat">
@@ -259,7 +130,7 @@
                     </div>
                 </div>
             </div>
-            <div class="hero-contact-card">
+            <div class="hero-contact-card reveal">
                 <div class="hcc-accent"></div>
                 <div class="hcc-header">
                     <span class="hcc-tag"><i class="bi bi-telephone-inbound me-1"></i>Contacto directo</span>
@@ -335,7 +206,7 @@
    ABOUT
    ════════════════════════════════════════════════════════════════ *@
 <section class="about-section" id="nosotros">
-    <div class="container">
+    <div class="container public-section-shell mx-auto">
         <div class="about-grid">
             <div class="about-image-col reveal">
                 <div class="about-img-frame">
@@ -406,10 +277,192 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   ÁREAS DE PRÁCTICA
+   EQUIPO (SOCIOS PRINCIPALES) - MOVido AQUÍ ARRIBA
+   ════════════════════════════════════════════════════════════════ *@
+@if (miembros is not null && miembros.Any())
+{
+    <section class="team-section editorial-team-section team-v2">
+        <div class="container public-section-shell mx-auto">
+            <div class="section-header text-center reveal mx-auto">
+                <span class="section-eyebrow">Socios principales del estudio</span>
+                <h2 class="section-title">Nuestro liderazgo legal</h2>
+                <div class="section-title-line"></div>
+                <p class="section-subtitle">Presentamos a quienes marcan el criterio, la estrategia y el estándar profesional del despacho.</p>
+            </div>
+
+            <div class="row justify-content-center">
+                <div class="col-12">
+                    <div class="editorial-team-stack">
+                        @foreach (var item in miembros.Take(2).Select((m, index) => new { Miembro = m, Index = index }))
+                        {
+                            var m = item.Miembro;
+                            var tImgSrc = !string.IsNullOrWhiteSpace(m.PhotoData) ? m.PhotoData
+                            : !string.IsNullOrWhiteSpace(m.FotoUrl) ? m.FotoUrl : null;
+                            var resumen = !string.IsNullOrWhiteSpace(m.BiografiaLarga) ? m.BiografiaLarga
+                            : !string.IsNullOrWhiteSpace(m.BiografiaCompleta) ? m.BiografiaCompleta
+                            : !string.IsNullOrWhiteSpace(m.BiografiaBreve) ? m.BiografiaBreve
+                            : "Perfil profesional disponible para consulta detallada.";
+                            var perfilHref = $"/perfil/{m.Nombres.ToSlug()}";
+                            <article class="editorial-member reveal @(item.Index % 2 == 1 ? "editorial-member-reverse" : "")">
+                                <a href="@perfilHref" class="editorial-member-media" aria-label="Ver perfil de @m.Nombres">
+                                    @if (tImgSrc is not null)
+                                    {
+                                        <img src="@tImgSrc" alt="@m.Nombres" class="editorial-member-photo" />
+                                    }
+                                    else
+                                    {
+                                        <div class="editorial-member-fallback">@GetInitials(m.Nombres)</div>
+                                    }
+                                    <div class="editorial-member-overlay">
+                                        <span class="editorial-member-location">Lamilla Escudero &amp; Asociados</span>
+                                        <span class="editorial-member-arrow"><i class="bi bi-arrow-up-right"></i></span>
+                                    </div>
+                                </a>
+
+                                <div class="editorial-member-content">
+                                    <span class="editorial-member-kicker">Socio principal</span>
+                                    <h3 class="editorial-member-name">
+                                        <a href="@perfilHref">@m.Nombres</a>
+                                    </h3>
+                                    <p class="editorial-member-role">@m.Cargo</p>
+                                    <span class="editorial-member-divider"></span>
+                                    @if (!string.IsNullOrWhiteSpace(m.FraseDestacada))
+                                    {
+                                        <p class="editorial-member-quote">"@m.FraseDestacada"</p>
+                                    }
+                                    <p class="editorial-member-summary">@resumen</p>
+                                    <div class="editorial-member-actions">
+                                        <a href="@perfilHref" class="editorial-link-primary">
+                                            <i class="bi bi-person-badge me-2"></i>Ver Perfil Completo
+                                        </a>
+                                        @if (!string.IsNullOrWhiteSpace(m.Email))
+                                        {
+                                            <a href="mailto:@m.Email" class="editorial-link-secondary">
+                                                <i class="bi bi-envelope-fill me-2"></i>Contacto directo
+                                            </a>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(m.LinkedIn))
+                                        {
+                                            <a href="@m.LinkedIn" target="_blank" rel="noopener" class="editorial-link-secondary">
+                                                <i class="bi bi-linkedin me-2"></i>LinkedIn
+                                            </a>
+                                        }
+                                    </div>
+                                </div>
+                            </article>
+                        }
+                    </div>
+
+                    <div class="text-center mt-5 reveal">
+                        <a href="/equipo" class="editorial-team-cta">
+                            <i class="bi bi-people-fill me-2"></i>Conocer a todo el equipo legal
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+@* ════════════════════════════════════════════════════════════════
+   ¿POR QUÉ ELEGIRNOS?
+   ════════════════════════════════════════════════════════════════ *@
+<section class="why-section">
+    <div class="container public-section-shell mx-auto">
+        <div class="section-header reveal">
+            <span class="section-eyebrow">Ventajas competitivas</span>
+            <h2 class="section-title">¿Por qué elegir nuestro estudio?</h2>
+            <div class="section-title-line"></div>
+        </div>
+        <div class="why-grid">
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">01</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-shield-fill-check"></i></div>
+                    <h3 class="why-feature-title">Excelencia Técnica</h3>
+                    <p class="why-feature-desc">Capacidad jurídica comprobada con formación continua y especialización en múltiples ramas del derecho ecuatoriano.</p>
+                </div>
+            </div>
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">02</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-person-check-fill"></i></div>
+                    <h3 class="why-feature-title">Atención Personalizada</h3>
+                    <p class="why-feature-desc">Cada caso recibe análisis individualizado y estrategias diseñadas específicamente para las necesidades de cada cliente.</p>
+                </div>
+            </div>
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">03</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                    <h3 class="why-feature-title">Raíces Locales</h3>
+                    <p class="why-feature-desc">Profundo conocimiento del contexto jurídico de Babahoyo y la región de Los Ríos para soluciones contextualizadas.</p>
+                </div>
+            </div>
+            <div class="why-feature reveal">
+                <div class="why-feature-bg-num">04</div>
+                <div class="why-feature-body">
+                    <div class="why-feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    <h3 class="why-feature-title">Resultados Comprobados</h3>
+                    <p class="why-feature-desc">Trayectoria de éxito en litigios, negociaciones y asesoramiento preventivo que respaldo nuestra reputación.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   TRAYECTORIA
+   ════════════════════════════════════════════════════════════════ *@
+<section class="trayectoria-section trayectoria-v2">
+    <div class="trayectoria-bg-lines"></div>
+    <div class="container public-section-shell mx-auto">
+        <div class="trayectoria-inner">
+            <div class="trayectoria-copy reveal">
+                <span class="section-eyebrow">Nuestra historia</span>
+                <h2 class="section-title" style="color:white;">Quiénes somos</h2>
+                <div class="tray-divider-gold"></div>
+                <p class="trayectoria-text">
+                    Fundado con la convicción de que el derecho debe ser accesible y humano,
+                    nuestro estudio ha acompañado a familias, empresas e individuos en los momentos
+                    legales más importantes de sus vidas.
+                </p>
+                <p class="trayectoria-text">
+                    Combinamos rigor técnico con atención personalizada. Cada causa merece
+                    una estrategia propia y un equipo comprometido con la justicia.
+                </p>
+                <a href="/contacto" class="btn-primary-gold mt-4 d-inline-flex">
+                    <i class="bi bi-handshake me-2"></i>Trabajemos juntos
+                </a>
+            </div>
+            <div class="trayectoria-stats trayectoria-stats-v2 reveal">
+                <div class="stat-item stat-item-v3">
+                    <div class="stat-item-line"></div>
+                    <span class="stat-num">+15</span>
+                    <span class="stat-label">Años de experiencia</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item stat-item-v3">
+                    <div class="stat-item-line"></div>
+                    <span class="stat-num">+500</span>
+                    <span class="stat-label">Causas atendidas</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat-item stat-item-v3">
+                    <div class="stat-item-line"></div>
+                    <span class="stat-num">98%</span>
+                    <span class="stat-label">Clientes satisfechos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ════════════════════════════════════════════════════════════════
+   ÁREAS DE PRÁCTICA - MOVIDO AQUÍ ABAJO
    ════════════════════════════════════════════════════════════════ *@
 <section class="practice-section practice-v2" id="servicios">
-    <div class="container">
+    <div class="container public-section-shell mx-auto">
         <div class="section-header reveal">
             <span class="section-eyebrow">Especialidades</span>
             <h2 class="section-title">Áreas de práctica</h2>
@@ -475,190 +528,15 @@
 </section>
 
 @* ════════════════════════════════════════════════════════════════
-   ¿POR QUÉ ELEGIRNOS?
-   ════════════════════════════════════════════════════════════════ *@
-<section class="why-section">
-    <div class="container">
-        <div class="section-header reveal">
-            <span class="section-eyebrow">Ventajas competitivas</span>
-            <h2 class="section-title">¿Por qué elegir nuestro estudio?</h2>
-            <div class="section-title-line"></div>
-        </div>
-        <div class="why-grid">
-            <div class="why-feature reveal">
-                <div class="why-feature-bg-num">01</div>
-                <div class="why-feature-body">
-                    <div class="why-feature-icon"><i class="bi bi-shield-fill-check"></i></div>
-                    <h3 class="why-feature-title">Excelencia Técnica</h3>
-                    <p class="why-feature-desc">Capacidad jurídica comprobada con formación continua y especialización en múltiples ramas del derecho ecuatoriano.</p>
-                </div>
-            </div>
-            <div class="why-feature reveal">
-                <div class="why-feature-bg-num">02</div>
-                <div class="why-feature-body">
-                    <div class="why-feature-icon"><i class="bi bi-person-check-fill"></i></div>
-                    <h3 class="why-feature-title">Atención Personalizada</h3>
-                    <p class="why-feature-desc">Cada caso recibe análisis individualizado y estrategias diseñadas específicamente para las necesidades de cada cliente.</p>
-                </div>
-            </div>
-            <div class="why-feature reveal">
-                <div class="why-feature-bg-num">03</div>
-                <div class="why-feature-body">
-                    <div class="why-feature-icon"><i class="bi bi-geo-alt-fill"></i></div>
-                    <h3 class="why-feature-title">Raíces Locales</h3>
-                    <p class="why-feature-desc">Profundo conocimiento del contexto jurídico de Babahoyo y la región de Los Ríos para soluciones contextualizadas.</p>
-                </div>
-            </div>
-            <div class="why-feature reveal">
-                <div class="why-feature-bg-num">04</div>
-                <div class="why-feature-body">
-                    <div class="why-feature-icon"><i class="bi bi-graph-up-arrow"></i></div>
-                    <h3 class="why-feature-title">Resultados Comprobados</h3>
-                    <p class="why-feature-desc">Trayectoria de éxito en litigios, negociaciones y asesoramiento preventivo que respaldo nuestra reputación.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-@* ════════════════════════════════════════════════════════════════
-   TRAYECTORIA
-   ════════════════════════════════════════════════════════════════ *@
-<section class="trayectoria-section trayectoria-v2">
-    <div class="trayectoria-bg-lines"></div>
-    <div class="container">
-        <div class="trayectoria-inner">
-            <div class="trayectoria-copy reveal">
-                <span class="section-eyebrow">Nuestra historia</span>
-                <h2 class="section-title" style="color:white;">Quiénes somos</h2>
-                <div class="tray-divider-gold"></div>
-                <p class="trayectoria-text">
-                    Fundado con la convicción de que el derecho debe ser accesible y humano,
-                    nuestro estudio ha acompañado a familias, empresas e individuos en los momentos
-                    legales más importantes de sus vidas.
-                </p>
-                <p class="trayectoria-text">
-                    Combinamos rigor técnico con atención personalizada. Cada causa merece
-                    una estrategia propia y un equipo comprometido con la justicia.
-                </p>
-                <a href="/contacto" class="btn-primary-gold mt-4 d-inline-flex">
-                    <i class="bi bi-handshake me-2"></i>Trabajemos juntos
-                </a>
-            </div>
-            <div class="trayectoria-stats trayectoria-stats-v2 reveal">
-                <div class="stat-item stat-item-v3">
-                    <div class="stat-item-line"></div>
-                    <span class="stat-num">+15</span>
-                    <span class="stat-label">Años de experiencia</span>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item stat-item-v3">
-                    <div class="stat-item-line"></div>
-                    <span class="stat-num">+500</span>
-                    <span class="stat-label">Causas atendidas</span>
-                </div>
-                <div class="stat-divider"></div>
-                <div class="stat-item stat-item-v3">
-                    <div class="stat-item-line"></div>
-                    <span class="stat-num">98%</span>
-                    <span class="stat-label">Clientes satisfechos</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-@* ════════════════════════════════════════════════════════════════
-   EQUIPO
-   ════════════════════════════════════════════════════════════════ *@
-@if (miembros is not null && miembros.Any())
-{
-    <section class="team-section team-v2">
-        <div class="container">
-            <div class="section-header reveal">
-                <span class="section-eyebrow">Las personas detrás del estudio</span>
-                <h2 class="section-title">Nuestro equipo</h2>
-                <div class="section-title-line"></div>
-                <p class="section-subtitle">Abogados comprometidos, especializados y con vocación de servicio.</p>
-            </div>
-            <div class="team-grid team-grid-v2">
-                @foreach (var m in miembros)
-                {
-                    var isExpanded = expandedMiembroId == m.Id;
-                    var tImgSrc = !string.IsNullOrWhiteSpace(m.PhotoData) ? m.PhotoData
-                    : !string.IsNullOrWhiteSpace(m.FotoUrl) ? m.FotoUrl : null;
-                    <div class="team-card team-card-v2 @(isExpanded ? "team-card-expanded" : "") reveal"
-                         @onclick="() => ToggleMiembro(m.Id)">
-                        <div class="team-avatar team-avatar-v2">
-                            @if (tImgSrc is not null)
-                            {
-                                <img src="@tImgSrc" alt="@m.Nombres" class="team-photo" />
-                            }
-                            else
-                            {
-
-                                <div class="team-initials">@GetInitials(m.Nombres)</div>
-                            }
-                            <div class="team-avatar-ring"></div>
-                        </div>
-                        <h3 class="team-name">@m.Nombres</h3>
-                        <p class="team-cargo">@m.Cargo</p>
-                        @if (!string.IsNullOrWhiteSpace(m.BiografiaBreve))
-                        {
-                            <p class="team-bio-breve">@m.BiografiaBreve</p>
-                        }
-                        @if (isExpanded)
-                        {
-                            <div class="team-bio-full team-bio-full-v2">
-                                <div class="team-bio-divider"></div>
-                                @if (!string.IsNullOrWhiteSpace(m.FraseDestacada))
-                                {
-                                    <p class="team-bio-frase">
-                                        <i class="bi bi-quote me-1" style="color:var(--gold);"></i>@m.FraseDestacada
-                                    </p>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(m.BiografiaCompleta))
-                                {
-                                    <p class="team-bio-text">@m.BiografiaCompleta</p>
-                                }
-                                <div class="team-bio-actions">
-                                    @if (!string.IsNullOrWhiteSpace(m.LinkedIn))
-                                    {
-                                        <a href="@m.LinkedIn" target="_blank" class="team-linkedin" @onclick:stopPropagation>
-                                            <i class="bi bi-linkedin me-1"></i>LinkedIn
-                                        </a>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(m.Email))
-                                    {
-                                        <a href="mailto:@m.Email" class="team-linkedin team-email-link" @onclick:stopPropagation>
-                                            <i class="bi bi-envelope-fill me-1"></i>Email
-                                        </a>
-                                    }
-                                    <button class="team-btn-overlay" @onclick="() => AbrirOverlay(m)" @onclick:stopPropagation>
-                                        <i class="bi bi-person-badge me-1"></i>Ver perfil completo
-                                    </button>
-                                </div>
-                            </div>
-                        }
-                        <span class="team-expand-hint">
-                            <i class="bi @(isExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
-                        </span>
-                    </div>
-                }
-            </div>
-        </div>
-    </section>
-}
-
-@* ════════════════════════════════════════════════════════════════
    TESTIMONIOS DINÁMICOS (FASE 10)
    ════════════════════════════════════════════════════════════════ *@
 <section class="testimonios-section py-5" style="background:var(--navy); position:relative;">
-    <div class="container" style="position:relative; z-index:2;">
+    <div class="container public-section-shell mx-auto" style="position:relative; z-index:2;">
 
-        <div class="section-header text-center mb-4">
+        <div class="section-header text-center mb-4 mx-auto reveal">
             <span class="section-eyebrow" style="color:var(--gold-light);">Lo que dicen nuestros clientes</span>
             <h2 class="section-title" style="color:var(--white);">Testimonios</h2>
+            <p class="testi-intro">La confianza de nuestros clientes es nuestro mayor logro.</p>
             <div class="section-title-line"></div>
         </div>
 
@@ -704,8 +582,8 @@
             </div>
         }
         @* ── Formulario para dejar testimonio (Diseño Premium) ── *@
-        <div class="row mt-5">
-            <div class="col-12">
+        <div class="row justify-content-center mt-5">
+            <div class="col-12 col-xl-8">
                 <div class="testi-form-card reveal">
                     <div class="testi-form-header text-center">
                         <i class="bi bi-pencil-square me-2"></i>Deja tu opinión
@@ -716,11 +594,11 @@
                         {
                             <div class="py-3 px-3 mb-4 text-center"
                                  style="border-radius: var(--radius-md);
-                                            background: @(_errorEnvio ? "rgba(255, 193, 7, 0.1)" : "rgba(32, 201, 151, 0.1)");
-                                            border: 1px solid @(_errorEnvio ? "rgba(255, 193, 7, 0.3)" : "rgba(32, 201, 151, 0.3)");
-                                            color: @(_errorEnvio ? "#ffc107" : "#20c997");
-                                            font-size: 0.95rem;
-                                            font-weight: 500;">
+                                                background: @(_errorEnvio ? "rgba(255, 193, 7, 0.1)" : "rgba(32, 201, 151, 0.1)");
+                                                border: 1px solid @(_errorEnvio ? "rgba(255, 193, 7, 0.3)" : "rgba(32, 201, 151, 0.3)");
+                                                color: @(_errorEnvio ? "#ffc107" : "#20c997");
+                                                font-size: 0.95rem;
+                                                font-weight: 500;">
                                 <i class="bi @(_errorEnvio ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") me-2"></i>
                                 @_mensajeEnvio
                             </div>
@@ -777,7 +655,7 @@
    VALORES (Con Título y Espaciado)
    ════════════════════════════════════════════════════════════════ *@
 <section class="values-section values-v2 py-5" style="background: var(--navy); margin-top: -1px; border-top: 1px solid rgba(255,255,255,0.05);">
-    <div class="container pt-4">
+    <div class="container public-section-shell mx-auto pt-4">
 
         @* NUEVO TÍTULO PARA LA SECCIÓN DE VALORES *@
         <div class="section-header text-center mb-5 reveal">
@@ -815,7 +693,7 @@
    ════════════════════════════════════════════════════════════════ *@
 <section class="cta-gold-band">
     <div class="cta-gold-bg-shape"></div>
-    <div class="container">
+    <div class="container public-section-shell mx-auto">
         <div class="cta-gold-inner reveal">
             <div class="cta-gold-text">
                 <h2 class="cta-gold-title">¿Necesitas asesoramiento legal?</h2>
@@ -1018,13 +896,16 @@
     }
 
     @@keyframes geoFloat {
-        0% {
-            transform: translateY(0) rotate(0deg);
-        }
+        0%
 
-        100% {
-            transform: translateY(-70px) rotate(360deg);
-        }
+    {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    100% {
+        transform: translateY(-70px) rotate(360deg);
+    }
+
     }
 
     .hero-bg-pattern {
@@ -1066,13 +947,16 @@
     }
 
     @@keyframes pulseBadge {
-        0%, 100% {
-            box-shadow: 0 0 0 0 rgba(184,150,62,.35);
-        }
+        0%, 100%
 
-        50% {
-            box-shadow: 0 0 0 13px rgba(184,150,62,0);
-        }
+    {
+        box-shadow: 0 0 0 0 rgba(184,150,62,.35);
+    }
+
+    50% {
+        box-shadow: 0 0 0 13px rgba(184,150,62,0);
+    }
+
     }
 
     .hero-eyebrow-wrap {
@@ -1273,17 +1157,20 @@
         }
 
     @@keyframes scrollBounce {
-        0%, 20%, 50%, 80%, 100% {
-            transform: translateX(-50%) translateY(0);
-        }
+        0%, 20%, 50%, 80%, 100%
 
-        40% {
-            transform: translateX(-50%) translateY(-10px);
-        }
+    {
+        transform: translateX(-50%) translateY(0);
+    }
 
-        60% {
-            transform: translateX(-50%) translateY(-5px);
-        }
+    40% {
+        transform: translateX(-50%) translateY(-10px);
+    }
+
+    60% {
+        transform: translateX(-50%) translateY(-5px);
+    }
+
     }
 
     .about-section {
@@ -1386,13 +1273,16 @@
     }
 
     @@keyframes badgePulse {
-        0%, 100% {
-            box-shadow: 0 12px 32px rgba(184,150,62,.4);
-        }
+        0%, 100%
 
-        50% {
-            box-shadow: 0 16px 40px rgba(184,150,62,.6);
-        }
+    {
+        box-shadow: 0 12px 32px rgba(184,150,62,.4);
+    }
+
+    50% {
+        box-shadow: 0 16px 40px rgba(184,150,62,.6);
+    }
+
     }
 
     .about-exp-num {
@@ -2083,15 +1973,18 @@
     }
 
     @@keyframes fadeInLogo {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
+        from
 
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
     }
 
     .scroll-top-btn {
@@ -2140,13 +2033,16 @@
     }
 
     @@keyframes overlayFadeIn {
-        from {
-            opacity: 0;
-        }
+        from
 
-        to {
-            opacity: 1;
-        }
+    {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
     }
 
     .bio-panel {
@@ -2164,15 +2060,18 @@
     }
 
     @@keyframes panelSlideUp {
-        from {
-            opacity: 0;
-            transform: translateY(24px) scale(.97);
-        }
+        from
 
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
+    {
+        opacity: 0;
+        transform: translateY(24px) scale(.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
     }
 
     .bio-close {
@@ -2256,15 +2155,18 @@
     }
 
     @@keyframes ringPulse {
-        0%, 100% {
-            transform: scale(1);
-            opacity: .6;
-        }
+        0%, 100%
 
-        50% {
-            transform: scale(1.05);
-            opacity: .3;
-        }
+    {
+        transform: scale(1);
+        opacity: .6;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: .3;
+    }
+
     }
 
     .bio-name {
@@ -2520,108 +2422,118 @@
     }
 
     @@media (max-width: 1200px) {
-        .why-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
+        .why-grid
 
-        .about-grid {
-            grid-template-columns: 1fr;
-            gap: 3rem;
-        }
+    {
+        grid-template-columns: repeat(2, 1fr);
+    }
 
-        .about-img, .about-img-placeholder {
-            height: 360px;
-        }
+    .about-grid {
+        grid-template-columns: 1fr;
+        gap: 3rem;
+    }
 
-        .about-exp-badge {
-            bottom: -15px;
-            right: 15px;
-        }
+    .about-img, .about-img-placeholder {
+        height: 360px;
+    }
 
-        .cta-gold-inner {
-            flex-direction: column;
-            text-align: center;
-        }
+    .about-exp-badge {
+        bottom: -15px;
+        right: 15px;
+    }
 
-        .cta-gold-actions {
-            justify-content: center;
-        }
+    .cta-gold-inner {
+        flex-direction: column;
+        text-align: center;
+    }
 
-        .testimonials-grid {
-            grid-template-columns: 1fr 1fr;
-        }
+    .cta-gold-actions {
+        justify-content: center;
+    }
+
+    .testimonials-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
     }
 
     @@media (max-width: 768px) {
-        .testimonials-grid {
-            grid-template-columns: 1fr;
-        }
+        .testimonials-grid
 
-        .cta-gold-actions {
-            flex-direction: column;
-            align-items: center;
-        }
+    {
+        grid-template-columns: 1fr;
+    }
+
+    .cta-gold-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+
     }
 
     @@media (max-width: 700px) {
-        .bio-panel {
-            grid-template-columns: 1fr;
-            max-height: 92vh;
-        }
+        .bio-panel
 
-        .bio-left {
-            padding: 2rem 1.5rem;
-        }
+    {
+        grid-template-columns: 1fr;
+        max-height: 92vh;
+    }
 
-        .bio-photo, .bio-initials {
-            width: 90px;
-            height: 90px;
-        }
+    .bio-left {
+        padding: 2rem 1.5rem;
+    }
 
-        .bio-close {
-            background: rgba(0,0,0,.3);
-        }
+    .bio-photo, .bio-initials {
+        width: 90px;
+        height: 90px;
+    }
 
-        .why-grid {
-            grid-template-columns: 1fr;
-        }
+    .bio-close {
+        background: rgba(0,0,0,.3);
+    }
 
-        .hero-scroll-indicator {
-            display: none;
-        }
+    .why-grid {
+        grid-template-columns: 1fr;
+    }
 
-        .about-features-grid {
-            grid-template-columns: 1fr;
-        }
+    .hero-scroll-indicator {
+        display: none;
+    }
 
-        .scroll-top-btn {
-            bottom: 1rem;
-            left: 1rem;
-        }
+    .about-features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .scroll-top-btn {
+        bottom: 1rem;
+        left: 1rem;
+    }
+
     }
 
     @@media (max-width: 576px) {
-        .hero-stats-bar {
-            gap: 1rem;
-        }
+        .hero-stats-bar
 
-        .hero-pulse-badge {
-            font-size: .72rem;
-            padding: .4rem 1rem;
-        }
+    {
+        gap: 1rem;
+    }
 
-        .cta-gold-title {
-            font-size: 1.75rem;
-        }
+    .hero-pulse-badge {
+        font-size: .72rem;
+        padding: .4rem 1rem;
+    }
+
+    .cta-gold-title {
+        font-size: 1.75rem;
+    }
+
     }
 
     /* ════════════════════════════════════════════════════════
-       HOME — Premium overrides
-       ════════════════════════════════════════════════════════ */
+           HOME — Premium overrides
+           ════════════════════════════════════════════════════════ */
     .hero-v2 {
-        background:
-            radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 22%),
-            linear-gradient(155deg, var(--navy-deep), var(--navy-mid));
+        background: radial-gradient(circle at top right, rgba(255,255,255,.08), transparent 22%), linear-gradient(155deg, var(--navy-deep), var(--navy-mid));
         color: var(--white);
         padding-top: 6rem;
         padding-bottom: 4.5rem;
@@ -2762,30 +2674,178 @@
     }
 
     .values-v2 {
-        background:
-            radial-gradient(circle at top right, rgba(255,255,255,.06), transparent 24%),
-            linear-gradient(160deg, var(--navy-deep), var(--navy-mid));
+        background: radial-gradient(circle at top right, rgba(255,255,255,.06), transparent 24%), linear-gradient(160deg, var(--navy-deep), var(--navy-mid));
     }
 
     .cta-gold-band {
-        background:
-            linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,0)),
-            linear-gradient(135deg, var(--gold), var(--gold-light));
+        background: linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,0)), linear-gradient(135deg, var(--gold), var(--gold-light));
     }
 
     @@media (max-width: 700px) {
-        .hero-signal-row {
-            flex-direction: column;
+        .hero-signal-row
+
+    {
+        flex-direction: column;
+    }
+
+    .hero-signal-pill {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hcc-badges {
+        flex-direction: column;
+    }
+
+    }
+
+    .reveal {
+        opacity: 0;
+        transform: translate3d(0, 42px, 0) scale(.985);
+        filter: blur(2px);
+        transition: opacity .9s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1), filter .9s ease;
+        will-change: opacity, transform, filter;
+    }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+            filter: blur(0);
         }
 
-        .hero-signal-pill {
-            width: 100%;
-            justify-content: center;
+    .hero-copy {
+        max-width: 760px;
+        padding-right: clamp(0rem, 1vw, .75rem);
+    }
+
+    .hero-actions {
+        margin-top: 1.5rem;
+        gap: 1rem;
+    }
+
+    .hero-stats-bar {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.25rem;
+        padding: 1.45rem 1.5rem;
+        margin-top: 2.35rem;
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 28px;
+        border-top: 1px solid rgba(255,255,255,.12);
+        background: linear-gradient(135deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+    }
+
+    .hero-stat {
+        gap: .45rem;
+        align-items: flex-start;
+    }
+
+        .hero-stat strong {
+            font-size: clamp(3rem, 5vw, 4.35rem);
+            line-height: .88;
+            color: var(--gold);
+            text-shadow: 0 10px 32px rgba(0,0,0,.28);
         }
 
-        .hcc-badges {
-            flex-direction: column;
+        .hero-stat span {
+            font-size: .76rem;
+            font-weight: 600;
+            letter-spacing: .16em;
+            color: rgba(255,255,255,.78);
         }
+
+    .hero-stat-div {
+        display: none;
+    }
+
+    .btn-hero-secondary {
+        background: linear-gradient(135deg, rgba(248,246,241,.98), rgba(240,237,230,.95));
+        color: var(--navy);
+        border: 1px solid rgba(255,255,255,.18);
+        box-shadow: 0 16px 34px rgba(0,0,0,.16);
+    }
+
+        .btn-hero-secondary i {
+            color: var(--gold);
+        }
+
+        .btn-hero-secondary:hover {
+            border-color: rgba(184,150,62,.45);
+            background: linear-gradient(135deg, var(--gold-pale), rgba(255,255,255,.98));
+            box-shadow: 0 22px 40px rgba(0,0,0,.18);
+            transform: translateY(-3px);
+        }
+
+    .testi-intro {
+        margin: .85rem auto 0;
+        max-width: 640px;
+        color: rgba(255,255,255,.72);
+        font-size: .96rem;
+        line-height: 1.75;
+    }
+
+    .testi-carousel {
+        max-width: 1080px;
+        margin: 0 auto 3rem;
+    }
+
+    .testimonial-card {
+        background: linear-gradient(180deg, rgba(248,246,241,.98), rgba(240,237,230,.96));
+        border: 1px solid rgba(184,150,62,.18);
+        box-shadow: 0 28px 60px rgba(0,0,0,.18);
+    }
+
+        .testimonial-card:hover {
+            background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(248,246,241,.98));
+            border-color: rgba(184,150,62,.35);
+            box-shadow: 0 32px 72px rgba(0,0,0,.2);
+        }
+
+    .tc-quote {
+        color: var(--navy);
+        font-size: clamp(1.15rem, 2vw, 1.45rem);
+    }
+
+        .tc-quote::before {
+            opacity: .08;
+        }
+
+    .tc-author-name {
+        color: var(--charcoal);
+    }
+
+    .tc-author-case {
+        color: var(--navy);
+        opacity: .72;
+    }
+
+    @@media (max-width: 991px) {
+        .hero-stats-bar
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    }
+
+    @@media (max-width: 700px) {
+        .hero-copy
+
+    {
+        max-width: 100%;
+        padding-right: 0;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn-hero-primary,
+    .btn-hero-secondary {
+        justify-content: center;
+    }
+
     }
 </style>
 
@@ -2816,16 +2876,17 @@
                 if (rect.top < window.innerHeight && rect.bottom > 0) {
                     el.dataset.counted = '1';
                     var target  = parseInt(el.dataset.target, 10);
-                    var suffix  = el.dataset.suffix || '+';
+                    var prefix  = (el.dataset.prefix !== undefined) ? el.dataset.prefix : (el.dataset.suffix === '%' ? '' : '+');
+                    var suffix  = el.dataset.suffix || '';
                     var dur     = 1800;
                     var start   = performance.now();
                     function step(ts) {
                         var p = Math.min((ts - start) / dur, 1);
                         var eased = 1 - Math.pow(1 - p, 3); /* ease-out-cubic */
                         var val = Math.floor(eased * target);
-                        el.textContent = (el.dataset.suffix === '%') ? val + '%' : '+' + val;
+                        el.textContent = prefix + val + suffix;
                         if (p < 1) requestAnimationFrame(step);
-                        else el.textContent = (el.dataset.suffix === '%') ? target + '%' : '+' + target;
+                        else el.textContent = prefix + target + suffix;
                     }
                     requestAnimationFrame(step);
                 }

@@ -1,0 +1,222 @@
+@page "/equipo"
+@inject IMiembroEstudioService MiembroService
+@rendermode InteractiveServer
+@using System.Linq
+
+<PageTitle>Equipo legal | Lamilla Escudero</PageTitle>
+
+<div class="team-directory-page">
+    <section class="team-directory-hero">
+        <div class="container public-section-shell mx-auto">
+            <div class="team-directory-hero-grid">
+                <div>
+                    <span class="team-directory-kicker">Estructura profesional</span>
+                    <h1 class="team-directory-title">
+                        El equipo que sostiene cada <em>estrategia legal</em>.
+                    </h1>
+                    <p class="team-directory-copy">
+                        Cada perfil combina criterio técnico, presencia profesional y una vocación
+                        real de acompañamiento. Aquí puedes conocer al equipo completo y acceder a
+                        la ficha pública dedicada de cada abogado.
+                    </p>
+                </div>
+
+                <aside class="team-directory-sidecard">
+                    <span class="team-directory-kicker">Nivel editorial</span>
+                    <h2 class="team-directory-sidecard-title">Confianza, jerarquía y claridad.</h2>
+                    <p class="team-directory-sidecard-copy">
+                        Diseñamos esta vista para presentar al despacho como una firma jurídica de élite:
+                        perfiles serios, lectura cómoda y navegación directa hacia cada socio y abogado.
+                    </p>
+                    <div class="team-directory-badges">
+                        <span><i class="bi bi-award"></i>Perfiles dedicados</span>
+                        <span><i class="bi bi-shield-lock"></i>Imagen institucional</span>
+                        <span><i class="bi bi-person-badge"></i>Acceso directo</span>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    @if (cargando)
+    {
+        <section class="team-directory-grid-section">
+            <div class="container public-section-shell mx-auto">
+                <div class="team-directory-card-empty">
+                    <h2 class="team-directory-card-name">Cargando equipo legal...</h2>
+                    <p class="team-directory-card-copy">Estamos preparando la presentación editorial de los perfiles.</p>
+                </div>
+            </div>
+        </section>
+    }
+    else if (!miembros.Any())
+    {
+        <section class="team-directory-grid-section">
+            <div class="container public-section-shell mx-auto">
+                <div class="team-directory-card-empty">
+                    <h2 class="team-directory-card-name">Próximamente</h2>
+                    <p class="team-directory-card-copy">
+                        El estudio está preparando la publicación de los perfiles completos del equipo.
+                    </p>
+                    <div class="team-directory-card-actions justify-content-center mt-4">
+                        <a href="/contacto" class="team-directory-card-link">
+                            <i class="bi bi-send me-2"></i>Solicitar consulta
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+    else
+    {
+        var destacados = miembros.Take(2).ToList();
+        var resto = miembros.Skip(2).ToList();
+
+        <section class="team-directory-featured editorial-team-section">
+            <div class="container public-section-shell mx-auto">
+                <div class="section-header text-center mx-auto">
+                    <span class="section-eyebrow">Socios principales</span>
+                    <h2 class="section-title">Dirección del estudio</h2>
+                    <div class="section-title-line"></div>
+                    <p class="section-subtitle">Los perfiles que encabezan la estrategia, la representación y la visión del despacho.</p>
+                </div>
+
+                <div class="editorial-team-stack">
+                    @foreach (var item in destacados.Select((m, index) => new { Miembro = m, Index = index }))
+                    {
+                        var m = item.Miembro;
+                        var imgSrc = !string.IsNullOrWhiteSpace(m.PhotoData) ? m.PhotoData
+                            : !string.IsNullOrWhiteSpace(m.FotoUrl) ? m.FotoUrl
+                            : null;
+                        var resumen = !string.IsNullOrWhiteSpace(m.BiografiaLarga) ? m.BiografiaLarga
+                            : !string.IsNullOrWhiteSpace(m.BiografiaCompleta) ? m.BiografiaCompleta
+                            : !string.IsNullOrWhiteSpace(m.BiografiaBreve) ? m.BiografiaBreve
+                            : "Perfil profesional disponible para consulta completa.";
+                        var perfilHref = $"/perfil/{m.Nombres.ToSlug()}";
+
+                        <article class="editorial-member @(item.Index % 2 == 1 ? "editorial-member-reverse" : "")">
+                            <a href="@perfilHref" class="editorial-member-media" aria-label="Ver perfil de @m.Nombres">
+                                @if (imgSrc is not null)
+                                {
+                                    <img src="@imgSrc" alt="@m.Nombres" class="editorial-member-photo" />
+                                }
+                                else
+                                {
+                                    <div class="editorial-member-fallback">@GetInitials(m.Nombres)</div>
+                                }
+                                <div class="editorial-member-overlay">
+                                    <span class="editorial-member-location">Lamilla Escudero &amp; Asociados</span>
+                                    <span class="editorial-member-arrow"><i class="bi bi-arrow-up-right"></i></span>
+                                </div>
+                            </a>
+
+                            <div class="editorial-member-content">
+                                <span class="editorial-member-kicker">Socio principal</span>
+                                <h3 class="editorial-member-name"><a href="@perfilHref">@m.Nombres</a></h3>
+                                <p class="editorial-member-role">@m.Cargo</p>
+                                <span class="editorial-member-divider"></span>
+                                @if (!string.IsNullOrWhiteSpace(m.FraseDestacada))
+                                {
+                                    <p class="editorial-member-quote">"@m.FraseDestacada"</p>
+                                }
+                                <p class="editorial-member-summary">@resumen</p>
+                                <div class="editorial-member-actions">
+                                    <a href="@perfilHref" class="editorial-link-primary">
+                                        <i class="bi bi-person-badge me-2"></i>Ver Perfil Completo
+                                    </a>
+                                    @if (!string.IsNullOrWhiteSpace(m.Email))
+                                    {
+                                        <a href="mailto:@m.Email" class="editorial-link-secondary">
+                                            <i class="bi bi-envelope-fill me-2"></i>Contacto directo
+                                        </a>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(m.LinkedIn))
+                                    {
+                                        <a href="@m.LinkedIn" target="_blank" rel="noopener" class="editorial-link-secondary">
+                                            <i class="bi bi-linkedin me-2"></i>LinkedIn
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        </section>
+
+        @if (resto.Any())
+        {
+            <section class="team-directory-grid-section">
+                <div class="container public-section-shell mx-auto">
+                    <div class="section-header text-center mx-auto">
+                        <span class="section-eyebrow">Todo el equipo</span>
+                        <h2 class="section-title">Más talento jurídico</h2>
+                        <div class="section-title-line"></div>
+                        <p class="section-subtitle">Conoce a los demás integrantes que fortalecen la ejecución y el acompañamiento del estudio.</p>
+                    </div>
+
+                    <div class="team-directory-grid">
+                        @foreach (var m in resto)
+                        {
+                            var imgSrc = !string.IsNullOrWhiteSpace(m.PhotoData) ? m.PhotoData
+                                : !string.IsNullOrWhiteSpace(m.FotoUrl) ? m.FotoUrl
+                                : null;
+                            var perfilHref = $"/perfil/{m.Nombres.ToSlug()}";
+                            <article class="team-directory-card">
+                                <a href="@perfilHref" class="team-directory-card-media" aria-label="Ver perfil de @m.Nombres">
+                                    @if (imgSrc is not null)
+                                    {
+                                        <img src="@imgSrc" alt="@m.Nombres" class="team-directory-card-photo" />
+                                    }
+                                    else
+                                    {
+                                        <div class="team-directory-card-fallback">@GetInitials(m.Nombres)</div>
+                                    }
+                                </a>
+
+                                <div>
+                                    <h3 class="team-directory-card-name"><a href="@perfilHref">@m.Nombres</a></h3>
+                                    <p class="team-directory-card-role">@m.Cargo</p>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(m.BiografiaBreve))
+                                {
+                                    <p class="team-directory-card-copy">@m.BiografiaBreve</p>
+                                }
+
+                                <div class="team-directory-card-actions">
+                                    <a href="@perfilHref" class="team-directory-card-link">
+                                        <i class="bi bi-arrow-right-circle me-2"></i>Ver Perfil Completo
+                                    </a>
+                                    @if (!string.IsNullOrWhiteSpace(m.Email))
+                                    {
+                                        <a href="mailto:@m.Email" class="team-directory-card-link-alt">
+                                            <i class="bi bi-envelope-fill me-2"></i>Escribir
+                                        </a>
+                                    }
+                                </div>
+                            </article>
+                        }
+                    </div>
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    private bool cargando = true;
+    private List<LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse> miembros = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        miembros = await MiembroService.GetAllAsync();
+        cargando = false;
+    }
+
+    private static string GetInitials(string nombre)
+    {
+        var partes = (nombre ?? "?").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2 ? $"{partes[0][0]}{partes[1][0]}" : partes.Length == 1 ? $"{partes[0][0]}" : "?";
+    }
+}

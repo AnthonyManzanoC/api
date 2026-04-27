@@ -1,0 +1,252 @@
+@page "/perfil/{Slug}"
+@inject IMiembroEstudioService MiembroService
+@rendermode InteractiveServer
+@using System.Linq
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+<PageTitle>@(_miembro?.Nombres ?? "Perfil legal") | Lamilla Escudero</PageTitle>
+
+<div class="profile-page">
+    @if (_cargando)
+    {
+        <section class="profile-notfound">
+            <div class="container public-section-shell mx-auto">
+                <div class="profile-panel">
+                    <h1 class="profile-name" style="font-size:clamp(2.5rem, 5vw, 3.8rem);">Cargando perfil...</h1>
+                    <p class="profile-copy">Estamos preparando la ficha profesional del abogado.</p>
+                </div>
+            </div>
+        </section>
+    }
+    else if (_miembro is null)
+    {
+        <section class="profile-notfound">
+            <div class="container public-section-shell mx-auto">
+                <div class="profile-panel">
+                    <span class="profile-kicker">Perfil no disponible</span>
+                    <h1 class="profile-name" style="font-size:clamp(2.5rem, 5vw, 3.8rem);">No encontramos este perfil público.</h1>
+                    <p class="profile-copy">
+                        El enlace puede haber cambiado o el miembro aún no ha sido publicado desde el panel administrativo.
+                    </p>
+                    <div class="profile-actions justify-content-center mt-4">
+                        <a href="/equipo" class="profile-cta-link">
+                            <i class="bi bi-people-fill me-2"></i>Volver al equipo
+                        </a>
+                        <a href="/contacto" class="profile-cta-link-alt">
+                            <i class="bi bi-send me-2"></i>Solicitar consulta
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+    else
+    {
+        var imagen = !string.IsNullOrWhiteSpace(_miembro.PhotoData) ? _miembro.PhotoData
+            : !string.IsNullOrWhiteSpace(_miembro.FotoUrl) ? _miembro.FotoUrl
+            : null;
+        var resumen = !string.IsNullOrWhiteSpace(_miembro.BiografiaBreve) ? _miembro.BiografiaBreve
+            : !string.IsNullOrWhiteSpace(_miembro.BiografiaCompleta) ? _miembro.BiografiaCompleta
+            : !string.IsNullOrWhiteSpace(_miembro.BiografiaLarga) ? _miembro.BiografiaLarga
+            : "Perfil profesional en actualización.";
+        var bioPrincipal = !string.IsNullOrWhiteSpace(_miembro.BiografiaLarga) ? _miembro.BiografiaLarga
+            : !string.IsNullOrWhiteSpace(_miembro.BiografiaCompleta) ? _miembro.BiografiaCompleta
+            : !string.IsNullOrWhiteSpace(_miembro.BiografiaBreve) ? _miembro.BiografiaBreve
+            : "La biografía completa estará disponible muy pronto.";
+
+        <section class="profile-hero">
+            <div class="container public-section-shell mx-auto">
+                <div class="profile-hero-grid">
+                    <div class="profile-portrait-shell">
+                        <div class="profile-portrait-frame">
+                            @if (imagen is not null)
+                            {
+                                <img src="@imagen" alt="@_miembro.Nombres" class="profile-portrait" />
+                            }
+                            else
+                            {
+                                <div class="profile-portrait-fallback">@GetInitials(_miembro.Nombres)</div>
+                            }
+                        </div>
+
+                        <div class="profile-portrait-meta">
+                            <a href="/equipo" class="profile-contact-pill">
+                                <i class="bi bi-arrow-left me-2"></i>Todo el equipo
+                            </a>
+                            @if (!string.IsNullOrWhiteSpace(_miembro.Email))
+                            {
+                                <a href="mailto:@_miembro.Email" class="profile-contact-pill">
+                                    <i class="bi bi-envelope-fill me-2"></i>@_miembro.Email
+                                </a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_miembro.LinkedIn))
+                            {
+                                <a href="@_miembro.LinkedIn" target="_blank" rel="noopener" class="profile-contact-pill">
+                                    <i class="bi bi-linkedin me-2"></i>LinkedIn
+                                </a>
+                            }
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="profile-kicker">Perfil profesional</span>
+                        <h1 class="profile-name">@_miembro.Nombres</h1>
+                        <p class="profile-role">@_miembro.Cargo</p>
+                        <p class="profile-copy">@resumen</p>
+
+                        @if (!string.IsNullOrWhiteSpace(_miembro.FraseDestacada))
+                        {
+                            <blockquote class="profile-frase">
+                                "@_miembro.FraseDestacada"
+                            </blockquote>
+                        }
+
+                        <div class="profile-actions mt-4">
+                            <a href="/contacto" class="profile-cta-link">
+                                <i class="bi bi-send me-2"></i>Solicitar consulta
+                            </a>
+                            <a href="/equipo" class="profile-cta-link-alt">
+                                <i class="bi bi-people me-2"></i>Conocer al equipo
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="profile-body-section">
+            <div class="container public-section-shell mx-auto">
+                <div class="profile-body-grid">
+                    <div class="profile-panel">
+                        <h2 class="profile-section-title">Biografía</h2>
+                        <div class="profile-prose">@bioPrincipal</div>
+
+                        @if (_timeline.Any())
+                        {
+                            <h2 class="profile-section-title mt-5">Trayectoria</h2>
+                            <div class="profile-timeline">
+                                @foreach (var item in _timeline)
+                                {
+                                    <div class="profile-timeline-item">
+                                        <div class="profile-timeline-year">@item.Anio</div>
+                                        <div class="profile-timeline-marker"></div>
+                                        <div>
+                                            <p class="profile-timeline-title">@item.Titulo</p>
+                                            @if (!string.IsNullOrWhiteSpace(item.Descripcion))
+                                            {
+                                                <p class="profile-timeline-desc">@item.Descripcion</p>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <aside class="profile-panel">
+                        <h2 class="profile-section-title">Resumen ejecutivo</h2>
+                        <p class="profile-side-note">
+                            Este perfil forma parte de la presentación institucional del estudio y se construye
+                            con la información registrada desde el panel administrativo.
+                        </p>
+
+                        @if (_educacion.Any())
+                        {
+                            <h2 class="profile-section-title mt-4">Formación</h2>
+                            <div class="profile-edu-list">
+                                @foreach (var item in _educacion)
+                                {
+                                    <div class="profile-edu-item">
+                                        <p class="profile-edu-title">@item.Titulo</p>
+                                        @if (!string.IsNullOrWhiteSpace(item.Institucion))
+                                        {
+                                            <p class="profile-edu-inst">@item.Institucion</p>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(item.Anio))
+                                        {
+                                            <p class="profile-edu-year">@item.Anio</p>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        <div class="profile-contact-row mt-4">
+                            @if (!string.IsNullOrWhiteSpace(_miembro.Email))
+                            {
+                                <a href="mailto:@_miembro.Email" class="profile-contact-pill">
+                                    <i class="bi bi-envelope-fill me-2"></i>Escribir al abogado
+                                </a>
+                            }
+                            <a href="/contacto" class="profile-contact-pill">
+                                <i class="bi bi-chat-dots-fill me-2"></i>Contacto con el estudio
+                            </a>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+
+    private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    private LamillaEscudero.Application.Models.Miembros.MiembroEstudioResponse? _miembro;
+    private List<EducacionItem> _educacion = new();
+    private List<TimelineItem> _timeline = new();
+    private bool _cargando = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _cargando = true;
+        var normalizedSlug = Slug.ToSlug();
+        _miembro = string.IsNullOrWhiteSpace(normalizedSlug)
+            ? null
+            : (await MiembroService.GetAllAsync())
+                .FirstOrDefault(m => m.Nombres.ToSlug() == normalizedSlug);
+
+        if (_miembro is not null)
+        {
+            _educacion = DeserializeList<EducacionItem>(_miembro.EducacionJson);
+            _timeline = DeserializeList<TimelineItem>(_miembro.TimelineExperienciaJson);
+        }
+        else
+        {
+            _educacion = new();
+            _timeline = new();
+        }
+
+        _cargando = false;
+    }
+
+    private static List<T> DeserializeList<T>(string? json) where T : new()
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new();
+        try { return JsonSerializer.Deserialize<List<T>>(json, JsonOpts) ?? new(); }
+        catch { return new(); }
+    }
+
+    private static string GetInitials(string nombre)
+    {
+        var partes = (nombre ?? "?").Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2 ? $"{partes[0][0]}{partes[1][0]}" : partes.Length == 1 ? $"{partes[0][0]}" : "?";
+    }
+
+    private class EducacionItem
+    {
+        [JsonPropertyName("titulo")] public string Titulo { get; set; } = string.Empty;
+        [JsonPropertyName("institucion")] public string Institucion { get; set; } = string.Empty;
+        [JsonPropertyName("anio")] public string Anio { get; set; } = string.Empty;
+    }
+
+    private class TimelineItem
+    {
+        [JsonPropertyName("anio")] public string Anio { get; set; } = string.Empty;
+        [JsonPropertyName("titulo")] public string Titulo { get; set; } = string.Empty;
+        [JsonPropertyName("descripcion")] public string Descripcion { get; set; } = string.Empty;
+    }
+}
