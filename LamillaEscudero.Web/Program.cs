@@ -84,5 +84,5 @@ app.MapPost("/logout", async (SignInManager<ApplicationUser> signIn) =>
 // ── Razor Components ─────────────────────────────────────────
 app.MapRazorComponents<LamillaEscudero.Web.Components.App>()
     .AddInteractiveServerRenderMode();
-
+app.MapGet("/ping", () => Results.Ok("Despierto"));
 app.Run();

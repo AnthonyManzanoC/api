@@ -111,5 +111,5 @@ using (var scope = app.Services.CreateScope())
         Cron.Daily() // Importante: usar los paréntesis ()
     );
 }
-
+app.MapGet("/ping", () => Results.Ok("Despierto"));
 app.Run();
