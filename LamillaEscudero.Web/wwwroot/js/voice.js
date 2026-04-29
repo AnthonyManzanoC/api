@@ -188,3 +188,7 @@ window.voiceChat = (() => {
         }
     };
 })();
+
+window.playAudioBase64 = function (base64Audio) {
+    return window.voiceChat.playAudioFromBase64(base64Audio);
+};

@@ -9,7 +9,6 @@
 @inject IJSRuntime JS
 @inject IConsultaWebService ConsultaService
 @inject IPublicChatService PublicChatService
-@inject ITextToSpeechService TextToSpeechService
 
 <button class="chat-fab @(!isOpen ? "chat-fab-pulse" : "")"
         type="button"
@@ -118,6 +117,7 @@
     private bool isDisposed;
     private bool scrollAfterRender;
     private string? pendingSpeechText;
+    private string? pendingAudioBase64;
     private long pendingSpeechVersion;
     private ElementReference chatInput;
     private ElementReference messagesContainer;
@@ -164,6 +164,14 @@
         {
             scrollAfterRender = false;
             await ScrollToBottom();
+        }
+
+        if (!string.IsNullOrWhiteSpace(pendingAudioBase64))
+        {
+            var audioBase64 = pendingAudioBase64;
+            pendingAudioBase64 = null;
+            await PlayAudioBase64Async(audioBase64);
+            return;
         }
 
         if (string.IsNullOrWhiteSpace(pendingSpeechText))
@@ -235,11 +243,11 @@
         if (reply.StartLeadCapture)
         {
             StartLeadCapture();
-            await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText);
+            await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText, audioBase64: reply.AudioBase64);
             return;
         }
 
-        await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText);
+        await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText, audioBase64: reply.AudioBase64);
         SetSuggestions(reply.SuggestionContext);
     }
 
@@ -388,16 +396,18 @@
         string text,
         bool isHtml = false,
         string? speechText = null,
+        string? audioBase64 = null,
         bool speak = true)
-        => AddBotMessageAsync(text, isHtml, speechText, speak);
+        => AddBotMessageAsync(text, isHtml, speechText, audioBase64, speak);
 
-    private Task BotHtml(string html, string? speechText = null, bool speak = true)
-        => AddBotMessageAsync(html, true, speechText, speak);
+    private Task BotHtml(string html, string? speechText = null, string? audioBase64 = null, bool speak = true)
+        => AddBotMessageAsync(html, true, speechText, audioBase64, speak);
 
     private async Task AddBotMessageAsync(
         string message,
         bool isHtml,
         string? speechText = null,
+        string? audioBase64 = null,
         bool speak = true)
     {
         messages.Add(new(message, true, DateTime.Now, isHtml));
@@ -405,6 +415,15 @@
 
         if (!speak || !jsReady || isDisposed)
         {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(audioBase64))
+        {
+            pendingAudioBase64 = audioBase64;
+            pendingSpeechText = null;
+            pendingSpeechVersion++;
             await InvokeAsync(StateHasChanged);
             return;
         }
@@ -420,6 +439,7 @@
         }
 
         pendingSpeechText = textForSpeech;
+        pendingAudioBase64 = null;
         pendingSpeechVersion++;
         await InvokeAsync(StateHasChanged);
     }
@@ -542,13 +562,30 @@
     {
         try
         {
-            var audioBase64 = await TextToSpeechService.GenerateAudioBase64Async(text);
+            var audioBase64 = await PublicChatService.GenerateSpeechAudioBase64Async(text);
             if (string.IsNullOrWhiteSpace(audioBase64) || isDisposed || speechVersion != pendingSpeechVersion)
             {
                 return;
             }
 
-            await JS.InvokeVoidAsync("voiceChat.playAudioFromBase64", audioBase64);
+            await PlayAudioBase64Async(audioBase64);
+        }
+        catch
+        {
+            // El audio es opcional: nunca debe romper la respuesta del chat.
+        }
+    }
+
+    private async Task PlayAudioBase64Async(string? audioBase64)
+    {
+        if (string.IsNullOrWhiteSpace(audioBase64) || !jsReady || isDisposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("playAudioBase64", audioBase64);
         }
         catch
         {
