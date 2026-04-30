@@ -41,20 +41,17 @@ public sealed class PublicChatService : IPublicChatService
     private readonly IConfiguracionEstudioService _configService;
     private readonly IMiembroEstudioService _miembroService;
     private readonly IServicioOfrecidoService _servicioService;
-    private readonly ITextToSpeechService _textToSpeechService;
     private readonly ILogger<PublicChatService> _logger;
 
     public PublicChatService(
         IConfiguracionEstudioService configService,
         IMiembroEstudioService miembroService,
         IServicioOfrecidoService servicioService,
-        ITextToSpeechService textToSpeechService,
         ILogger<PublicChatService> logger)
     {
         _configService = configService;
         _miembroService = miembroService;
         _servicioService = servicioService;
-        _textToSpeechService = textToSpeechService;
         _logger = logger;
     }
 
@@ -68,7 +65,7 @@ public sealed class PublicChatService : IPublicChatService
         if (string.IsNullOrWhiteSpace(normalized))
         {
             response = DefaultReply();
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         if (ContainsSensitiveIntent(normalized))
@@ -79,7 +76,7 @@ public sealed class PublicChatService : IPublicChatService
                 SpeechText = "Por seguridad solo puedo compartir informacion publica del estudio.",
                 SuggestionContext = "inicio"
             };
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         if (MatchesAny(normalized, "hola", "buenos", "buenas", "saludos"))
@@ -89,7 +86,7 @@ public sealed class PublicChatService : IPublicChatService
                 Message = "Hola, con gusto te ayudo. Puedo contarte sobre nuestros servicios, datos de contacto o registrar tu consulta.",
                 SuggestionContext = "inicio"
             };
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         var asksForContact = MatchesAny(
@@ -107,25 +104,25 @@ public sealed class PublicChatService : IPublicChatService
         if (asksForServices)
         {
             response = await BuildServicesReplyAsync(cancellationToken);
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         if (asksForContact)
         {
             response = await BuildPublicContactReplyAsync(normalized, cancellationToken);
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         var specificServiceReply = await TryBuildMatchedServiceReplyAsync(normalized, cancellationToken);
         if (specificServiceReply is not null)
         {
-            return await AttachAudioAsync(specificServiceReply, cancellationToken);
+            return specificServiceReply;
         }
 
         var teamReply = await TryBuildTeamReplyAsync(normalized, cancellationToken);
         if (teamReply is not null)
         {
-            return await AttachAudioAsync(teamReply, cancellationToken);
+            return teamReply;
         }
 
         if (MatchesAny(normalized, "agendar", "cita", "asesoria", "hablar con abogado", "quiero hablar", "consulta legal", "consulta", "abogado"))
@@ -136,7 +133,7 @@ public sealed class PublicChatService : IPublicChatService
                 StartLeadCapture = true,
                 SuggestionContext = "lead"
             };
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         if (MatchesAny(normalized, "horario", "horarios", "hora", "atencion", "abierto"))
@@ -146,7 +143,7 @@ public sealed class PublicChatService : IPublicChatService
                 Message = "Nuestro horario de atencion es de lunes a viernes, de 08:30 a 17:30. Los sabados atendemos hasta las 12:00.",
                 SuggestionContext = "horario"
             };
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         if (MatchesAny(normalized, "precio", "precios", "costo", "cuanto", "honorario", "honorarios", "cobran"))
@@ -156,7 +153,7 @@ public sealed class PublicChatService : IPublicChatService
                 Message = "Los honorarios dependen del tipo de asunto y su complejidad. Si quieres, puedo ayudarte a registrar una consulta inicial para que el estudio te oriente mejor.",
                 SuggestionContext = "precios"
             };
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         if (MatchesAny(normalized, "gracias", "hasta", "adios", "chao", "bye"))
@@ -166,17 +163,12 @@ public sealed class PublicChatService : IPublicChatService
                 Message = "Fue un gusto ayudarte. Cuando quieras, aqui estare para orientarte nuevamente.",
                 SuggestionContext = "inicio"
             };
-            return await AttachAudioAsync(response, cancellationToken);
+            return response;
         }
 
         response = DefaultReply();
-        return await AttachAudioAsync(response, cancellationToken);
+        return response;
     }
-
-    public Task<string?> GenerateSpeechAudioBase64Async(
-        string text,
-        CancellationToken cancellationToken = default)
-        => GenerateSpeechAudioBase64CoreAsync(text, cancellationToken);
 
     private async Task<PublicChatResponse> BuildPublicContactReplyAsync(
         string normalizedMessage,
@@ -631,67 +623,6 @@ public sealed class PublicChatService : IPublicChatService
             Message = "Puedo ayudarte con informacion sobre servicios, contacto del estudio o registrar una consulta. Si quieres, dime en que tema necesitas orientacion.",
             SuggestionContext = "inicio"
         };
-
-    private async Task<PublicChatResponse> AttachAudioAsync(
-        PublicChatResponse response,
-        CancellationToken cancellationToken)
-    {
-        if (!string.IsNullOrWhiteSpace(response.AudioBase64))
-        {
-            return response;
-        }
-
-        var speechText = FirstNonEmpty(response.SpeechText, ToSpeechText(response.Message, response.IsHtml));
-        if (string.IsNullOrWhiteSpace(speechText))
-        {
-            return response;
-        }
-
-        var speechResult = await _textToSpeechService.GenerateAudioBase64Async(speechText, cancellationToken);
-        return new PublicChatResponse
-        {
-            Message = AppendAudioError(response.Message, response.IsHtml, speechResult.ErrorMessage),
-            SpeechText = response.SpeechText,
-            AudioBase64 = speechResult.AudioBase64,
-            SkipSpeechFallback = true,
-            IsHtml = response.IsHtml,
-            StartLeadCapture = response.StartLeadCapture,
-            SuggestionContext = response.SuggestionContext
-        };
-    }
-
-    private async Task<string?> GenerateSpeechAudioBase64CoreAsync(
-        string text,
-        CancellationToken cancellationToken)
-    {
-        var speechResult = await _textToSpeechService.GenerateAudioBase64Async(text, cancellationToken);
-        return speechResult.AudioBase64;
-    }
-
-    private static string ToSpeechText(string value, bool isHtml)
-    {
-        if (!isHtml)
-        {
-            return value;
-        }
-
-        var withoutTags = Regex.Replace(value, "<[^>]+>", " ");
-        var decoded = WebUtility.HtmlDecode(withoutTags);
-        return Regex.Replace(decoded, @"\s+", " ").Trim();
-    }
-
-    private static string AppendAudioError(string message, bool isHtml, string? errorMessage)
-    {
-        var cleanError = TrimToNull(errorMessage);
-        if (cleanError is null)
-        {
-            return message;
-        }
-
-        return isHtml
-            ? $"{message}<br><br><strong>[ERROR DE AUDIO: {Html(cleanError)}]</strong>"
-            : $"{message} [ERROR DE AUDIO: {cleanError}]";
-    }
 
     private sealed record PublicStudioInfo(
         string NombreEstudio,

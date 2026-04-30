@@ -1,6 +1,5 @@
 ﻿using LamillaEscudero.Application.Abstractions;
 using LamillaEscudero.Infrastructure.Identity;
-using LamillaEscudero.Infrastructure.Options;
 using LamillaEscudero.Infrastructure.Persistence;
 using LamillaEscudero.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
@@ -30,15 +29,6 @@ public static class DependencyInjection
         })
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
-
-        services.Configure<ElevenLabsOptions>(
-            configuration.GetSection(ElevenLabsOptions.SectionName));
-
-        services.AddHttpClient<ITextToSpeechService, ElevenLabsTextToSpeechService>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.elevenlabs.io/");
-            client.Timeout = TimeSpan.FromSeconds(20);
-        });
 
         // ── Servicios anteriores ─────────────────────────────────
         services.AddScoped<IJwtTokenService, JwtTokenService>();
