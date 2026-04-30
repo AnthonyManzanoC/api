@@ -243,11 +243,11 @@
         if (reply.StartLeadCapture)
         {
             StartLeadCapture();
-            await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText, audioBase64: reply.AudioBase64);
+            await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText, audioBase64: reply.AudioBase64, skipSpeechFallback: reply.SkipSpeechFallback);
             return;
         }
 
-        await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText, audioBase64: reply.AudioBase64);
+        await Bot(reply.Message, isHtml: reply.IsHtml, speechText: reply.SpeechText, audioBase64: reply.AudioBase64, skipSpeechFallback: reply.SkipSpeechFallback);
         SetSuggestions(reply.SuggestionContext);
     }
 
@@ -397,18 +397,20 @@
         bool isHtml = false,
         string? speechText = null,
         string? audioBase64 = null,
-        bool speak = true)
-        => AddBotMessageAsync(text, isHtml, speechText, audioBase64, speak);
+        bool speak = true,
+        bool skipSpeechFallback = false)
+        => AddBotMessageAsync(text, isHtml, speechText, audioBase64, speak, skipSpeechFallback);
 
-    private Task BotHtml(string html, string? speechText = null, string? audioBase64 = null, bool speak = true)
-        => AddBotMessageAsync(html, true, speechText, audioBase64, speak);
+    private Task BotHtml(string html, string? speechText = null, string? audioBase64 = null, bool speak = true, bool skipSpeechFallback = false)
+        => AddBotMessageAsync(html, true, speechText, audioBase64, speak, skipSpeechFallback);
 
     private async Task AddBotMessageAsync(
         string message,
         bool isHtml,
         string? speechText = null,
         string? audioBase64 = null,
-        bool speak = true)
+        bool speak = true,
+        bool skipSpeechFallback = false)
     {
         messages.Add(new(message, true, DateTime.Now, isHtml));
         scrollAfterRender = true;
@@ -423,6 +425,15 @@
         {
             pendingAudioBase64 = audioBase64;
             pendingSpeechText = null;
+            pendingSpeechVersion++;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (skipSpeechFallback)
+        {
+            pendingSpeechText = null;
+            pendingAudioBase64 = null;
             pendingSpeechVersion++;
             await InvokeAsync(StateHasChanged);
             return;

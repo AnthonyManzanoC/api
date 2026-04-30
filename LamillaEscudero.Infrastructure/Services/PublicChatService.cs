@@ -176,7 +176,7 @@ public sealed class PublicChatService : IPublicChatService
     public Task<string?> GenerateSpeechAudioBase64Async(
         string text,
         CancellationToken cancellationToken = default)
-        => _textToSpeechService.GenerateAudioBase64Async(text, cancellationToken);
+        => GenerateSpeechAudioBase64CoreAsync(text, cancellationToken);
 
     private async Task<PublicChatResponse> BuildPublicContactReplyAsync(
         string normalizedMessage,
@@ -647,21 +647,25 @@ public sealed class PublicChatService : IPublicChatService
             return response;
         }
 
-        var audioBase64 = await GenerateSpeechAudioBase64Async(speechText, cancellationToken);
-        if (string.IsNullOrWhiteSpace(audioBase64))
-        {
-            return response;
-        }
-
+        var speechResult = await _textToSpeechService.GenerateAudioBase64Async(speechText, cancellationToken);
         return new PublicChatResponse
         {
-            Message = response.Message,
+            Message = AppendAudioError(response.Message, response.IsHtml, speechResult.ErrorMessage),
             SpeechText = response.SpeechText,
-            AudioBase64 = audioBase64,
+            AudioBase64 = speechResult.AudioBase64,
+            SkipSpeechFallback = true,
             IsHtml = response.IsHtml,
             StartLeadCapture = response.StartLeadCapture,
             SuggestionContext = response.SuggestionContext
         };
+    }
+
+    private async Task<string?> GenerateSpeechAudioBase64CoreAsync(
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var speechResult = await _textToSpeechService.GenerateAudioBase64Async(text, cancellationToken);
+        return speechResult.AudioBase64;
     }
 
     private static string ToSpeechText(string value, bool isHtml)
@@ -674,6 +678,19 @@ public sealed class PublicChatService : IPublicChatService
         var withoutTags = Regex.Replace(value, "<[^>]+>", " ");
         var decoded = WebUtility.HtmlDecode(withoutTags);
         return Regex.Replace(decoded, @"\s+", " ").Trim();
+    }
+
+    private static string AppendAudioError(string message, bool isHtml, string? errorMessage)
+    {
+        var cleanError = TrimToNull(errorMessage);
+        if (cleanError is null)
+        {
+            return message;
+        }
+
+        return isHtml
+            ? $"{message}<br><br><strong>[ERROR DE AUDIO: {Html(cleanError)}]</strong>"
+            : $"{message} [ERROR DE AUDIO: {cleanError}]";
     }
 
     private sealed record PublicStudioInfo(

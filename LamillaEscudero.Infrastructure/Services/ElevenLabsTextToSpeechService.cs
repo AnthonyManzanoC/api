@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using LamillaEscudero.Application.Abstractions;
+using LamillaEscudero.Application.Models.Chat;
 using LamillaEscudero.Infrastructure.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -30,21 +31,22 @@ public sealed class ElevenLabsTextToSpeechService : ITextToSpeechService
         _logger = logger;
     }
 
-    public async Task<string?> GenerateAudioBase64Async(
+    public async Task<TextToSpeechResult> GenerateAudioBase64Async(
         string text,
         CancellationToken cancellationToken = default)
     {
         var cleanText = text?.Trim();
         if (string.IsNullOrWhiteSpace(cleanText))
         {
-            return null;
+            return TextToSpeechResult.Empty;
         }
 
         var settings = ResolveSettings();
         if (string.IsNullOrWhiteSpace(settings.ApiKey))
         {
+            const string errorMessage = "No se encontro configuracion para ElevenLabs:ApiKey.";
             _logger.LogWarning("No se puede sintetizar audio porque ElevenLabs no tiene una API Key configurada.");
-            return null;
+            return TextToSpeechResult.Failure(errorMessage);
         }
 
         try
@@ -77,52 +79,58 @@ public sealed class ElevenLabsTextToSpeechService : ITextToSpeechService
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+                var errorMessage = BuildHttpErrorMessage(response, errorBody);
                 _logger.LogWarning(
                     "ElevenLabs devolvio el estado {StatusCode} al sintetizar audio del chat publico. Respuesta: {ResponseBody}",
                     (int)response.StatusCode,
                     Truncate(errorBody, 500));
-                return null;
+                return TextToSpeechResult.Failure(errorMessage);
             }
 
             var audioBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-            return audioBytes.Length == 0
-                ? null
-                : Convert.ToBase64String(audioBytes);
+            if (audioBytes.Length == 0)
+            {
+                const string errorMessage = "ElevenLabs devolvio el audio vacio.";
+                _logger.LogWarning("ElevenLabs devolvio un audio vacio para el chat publico.");
+                return TextToSpeechResult.Failure(errorMessage);
+            }
+
+            return TextToSpeechResult.Success(Convert.ToBase64String(audioBytes));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogWarning("La llamada a ElevenLabs supero el tiempo de espera.");
-            return null;
+            const string errorMessage = "La llamada a ElevenLabs supero el tiempo de espera.";
+            _logger.LogWarning(errorMessage);
+            return TextToSpeechResult.Failure(errorMessage);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "No se pudo sintetizar audio para el chat publico.");
-            return null;
+            return TextToSpeechResult.Failure(ex.Message);
         }
     }
 
     private ResolvedElevenLabsSettings ResolveSettings()
     {
         var options = _options.Value;
+        var section = _configuration.GetSection(ElevenLabsOptions.SectionName);
 
         var apiKey = FirstNonEmpty(
-            options.ApiKey,
-            _configuration["ElevenLabs:ApiKey"],
-            Environment.GetEnvironmentVariable("ElevenLabs__ApiKey"),
-            Environment.GetEnvironmentVariable("ELEVENLABS_API_KEY"));
+            section[nameof(ElevenLabsOptions.ApiKey)],
+            options.ApiKey);
 
         var voiceId = FirstNonEmpty(
+            section[nameof(ElevenLabsOptions.VoiceId)],
             options.VoiceId,
-            _configuration["ElevenLabs:VoiceId"],
-            Environment.GetEnvironmentVariable("ElevenLabs__VoiceId"),
-            Environment.GetEnvironmentVariable("ELEVENLABS_VOICE_ID"),
             DefaultVoiceId) ?? DefaultVoiceId;
 
         var modelId = FirstNonEmpty(
+            section[nameof(ElevenLabsOptions.ModelId)],
             options.ModelId,
-            _configuration["ElevenLabs:ModelId"],
-            Environment.GetEnvironmentVariable("ElevenLabs__ModelId"),
-            Environment.GetEnvironmentVariable("ELEVENLABS_MODEL_ID"),
             DefaultModelId) ?? DefaultModelId;
 
         return new ResolvedElevenLabsSettings(apiKey, voiceId, modelId);
@@ -140,6 +148,20 @@ public sealed class ElevenLabsTextToSpeechService : ITextToSpeechService
         }
 
         return clean[..maxLength].TrimEnd() + "...";
+    }
+
+    private static string BuildHttpErrorMessage(HttpResponseMessage response, string? errorBody)
+    {
+        var statusCode = (int)response.StatusCode;
+        var reasonPhrase = response.ReasonPhrase?.Trim();
+        var statusText = string.IsNullOrWhiteSpace(reasonPhrase)
+            ? statusCode.ToString()
+            : $"{statusCode} {reasonPhrase}";
+
+        var details = Truncate(errorBody, 300);
+        return string.IsNullOrWhiteSpace(details)
+            ? statusText
+            : $"{statusText} - {details}";
     }
 
     private sealed record ResolvedElevenLabsSettings(
