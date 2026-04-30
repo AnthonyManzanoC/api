@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="LamillaEscudero.Web.styles.css" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#0B192C" />
     <HeadOutlet />
 </head>
 
@@ -51,6 +53,11 @@
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js');
         }
     </script>
 </body>
