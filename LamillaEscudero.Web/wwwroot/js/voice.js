@@ -1,17 +1,13 @@
-window.mensajesVoz = Array.isArray(window.mensajesVoz)
-    ? window.mensajesVoz
-    : [];
+if (window.speechSynthesis && typeof window.speechSynthesis.getVoices === "function") {
+    window.speechSynthesis.getVoices();
+}
 
 window.voiceChat = (() => {
     let recognition = null;
     let activeDotNetRef = null;
-    let activeSpeechRequestId = 0;
-    let activeSpeechTimeoutId = null;
-    let cachedSpanishVoice = null;
+    let audioDesbloqueado = false;
 
     const defaultSpeechLanguage = "es-ES";
-    const speechRestartDelayMs = 50;
-    const sendUnlockSelector = ".chat-send-btn, .chat-suggestion-btn";
     const SpeechRecognitionCtor =
         window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
@@ -36,180 +32,36 @@ window.voiceChat = (() => {
         try {
             await activeDotNetRef.invokeMethodAsync(methodName, value);
         } catch {
-            // El componente pudo haberse desmontado.
         }
     }
 
     function stopRecognition() {
-        if (recognition) {
-            recognition.onstart = null;
-            recognition.onresult = null;
-            recognition.onerror = null;
-            recognition.onend = null;
-            recognition.stop();
-            recognition = null;
+        if (!recognition) {
+            return;
         }
-    }
 
-    function cleanSpeechText(text) {
-        return typeof text === "string"
-            ? text.replace(/\s+/g, " ").trim()
-            : "";
+        const currentRecognition = recognition;
+        recognition = null;
+        currentRecognition.onstart = null;
+        currentRecognition.onresult = null;
+        currentRecognition.onerror = null;
+        currentRecognition.onend = null;
+
+        try {
+            currentRecognition.stop();
+        } catch {
+        }
     }
 
     function getSpeechSynthesis() {
         return window.speechSynthesis || null;
     }
 
-    function isSpeechActive(synth) {
-        return Boolean(synth && (synth.speaking || synth.pending));
-    }
-
-    function cancelSpeechIfActive(synth) {
-        if (synth && typeof synth.cancel === "function" && isSpeechActive(synth)) {
-            synth.cancel();
+    function desbloquearAudio(language) {
+        if (audioDesbloqueado) {
             return true;
         }
 
-        return false;
-    }
-
-    function ensureSpeechReferences() {
-        if (!Array.isArray(window.mensajesVoz)) {
-            window.mensajesVoz = [];
-        }
-
-        return window.mensajesVoz;
-    }
-
-    function clearSpeechReferences() {
-        ensureSpeechReferences().length = 0;
-    }
-
-    function releaseSpeechReference(utterance) {
-        const references = ensureSpeechReferences();
-        const index = references.indexOf(utterance);
-
-        if (index >= 0) {
-            references.splice(index, 1);
-        }
-    }
-
-    function keepSpeechReference(utterance) {
-        ensureSpeechReferences().push(utterance);
-    }
-
-    function clearPendingSpeechTimeout() {
-        if (activeSpeechTimeoutId !== null) {
-            window.clearTimeout(activeSpeechTimeoutId);
-            activeSpeechTimeoutId = null;
-        }
-    }
-
-    function getAvailableVoices() {
-        const synth = getSpeechSynthesis();
-
-        if (!synth || typeof synth.getVoices !== "function") {
-            return [];
-        }
-
-        return synth.getVoices();
-    }
-
-    function findSpanishVoice(language) {
-        const voices = getAvailableVoices();
-
-        if (!voices.length) {
-            return null;
-        }
-
-        if (cachedSpanishVoice && voices.includes(cachedSpanishVoice)) {
-            return cachedSpanishVoice;
-        }
-
-        const requestedLanguage = (language || defaultSpeechLanguage).toLowerCase();
-        const normalizeLang = voice => (voice?.lang || "").toLowerCase();
-        const exactLocalVoice = voices.find(voice =>
-            normalizeLang(voice) === requestedLanguage && voice.localService);
-        const exactVoice = voices.find(voice =>
-            normalizeLang(voice) === requestedLanguage);
-        const localSpanishVoice = voices.find(voice =>
-            normalizeLang(voice).startsWith("es-") && voice.localService);
-        const spanishVoice = voices.find(voice =>
-            normalizeLang(voice).startsWith("es-"));
-        const defaultVoice = voices.find(voice => voice.default);
-
-        cachedSpanishVoice =
-            exactLocalVoice ||
-            exactVoice ||
-            localSpanishVoice ||
-            spanishVoice ||
-            defaultVoice ||
-            null;
-
-        return cachedSpanishVoice;
-    }
-
-    function splitSpeechText(text) {
-        const maxLength = 220;
-        const sentences = text.match(/[^.!?;:]+[.!?;:]?/g) || [text];
-        const chunks = [];
-        let current = "";
-
-        const pushCurrent = () => {
-            const value = current.trim();
-
-            if (value) {
-                chunks.push(value);
-            }
-
-            current = "";
-        };
-
-        sentences.forEach(sentence => {
-            const cleanSentence = sentence.trim();
-
-            if (!cleanSentence) {
-                return;
-            }
-
-            if (cleanSentence.length > maxLength) {
-                pushCurrent();
-
-                cleanSentence.split(/\s+/).forEach(word => {
-                    if ((current + " " + word).trim().length > maxLength) {
-                        pushCurrent();
-                    }
-
-                    current = `${current} ${word}`.trim();
-                });
-
-                pushCurrent();
-                return;
-            }
-
-            if ((current + " " + cleanSentence).trim().length > maxLength) {
-                pushCurrent();
-            }
-
-            current = `${current} ${cleanSentence}`.trim();
-        });
-
-        pushCurrent();
-
-        return chunks.length ? chunks : [text];
-    }
-
-    function cancelNativeSpeech() {
-        const synth = getSpeechSynthesis();
-        activeSpeechRequestId++;
-        clearPendingSpeechTimeout();
-        clearSpeechReferences();
-
-        cancelSpeechIfActive(synth);
-    }
-
-    function desbloquearAudio(language) {
         const synth = getSpeechSynthesis();
 
         if (!synth
@@ -219,150 +71,60 @@ window.voiceChat = (() => {
         }
 
         try {
-            const utterance = new SpeechSynthesisUtterance("");
+            const utterance = new SpeechSynthesisUtterance(" ");
             utterance.lang = language || defaultSpeechLanguage;
             utterance.volume = 0;
-            utterance.rate = 1;
-            utterance.pitch = 1;
-            utterance.onend = () => releaseSpeechReference(utterance);
-            utterance.onerror = () => releaseSpeechReference(utterance);
-
-            if (typeof synth.resume === "function") {
-                synth.resume();
-            }
-
-            keepSpeechReference(utterance);
+            utterance.rate = 1.0;
+            audioDesbloqueado = true;
             synth.speak(utterance);
-            window.setTimeout(() => releaseSpeechReference(utterance), 1000);
             return true;
         } catch {
             return false;
         }
     }
 
-    function desbloquearAudioDesdeEnvio(event) {
-        const target = event?.target;
-
-        if (!target
-            || typeof target.closest !== "function"
-            || !target.closest(sendUnlockSelector)) {
-            return;
-        }
-
+    function desbloquearAudioDesdeInteraccion() {
         desbloquearAudio(defaultSpeechLanguage);
     }
 
-    function registrarDesbloqueoEnEnvio() {
-        if (window.__voiceChatSendUnlockRegistered
+    function registrarDesbloqueoAudio() {
+        if (window.__voiceChatAudioUnlockRegistered
             || typeof document === "undefined"
             || typeof document.addEventListener !== "function") {
             return;
         }
 
-        window.__voiceChatSendUnlockRegistered = true;
+        window.__voiceChatAudioUnlockRegistered = true;
         const unlockEventName = window.PointerEvent ? "pointerdown" : "click";
-        document.addEventListener(unlockEventName, desbloquearAudioDesdeEnvio, true);
+        document.addEventListener(
+            unlockEventName,
+            desbloquearAudioDesdeInteraccion,
+            { capture: true, once: true });
     }
 
-    function reproducirRespuesta(text, language) {
+    function reproducirRespuesta(texto) {
         const synth = getSpeechSynthesis();
 
         if (!synth
             || typeof synth.speak !== "function"
-            || typeof synth.cancel !== "function"
-            || typeof window.SpeechSynthesisUtterance !== "function") {
+            || typeof window.SpeechSynthesisUtterance !== "function"
+            || typeof texto !== "string"
+            || !texto.trim()) {
             return false;
         }
 
-        const requestId = ++activeSpeechRequestId;
-        const speechLanguage = language || defaultSpeechLanguage;
-
-        clearPendingSpeechTimeout();
-        clearSpeechReferences();
-        cancelSpeechIfActive(synth);
-
-        const cleanText = cleanSpeechText(text);
-
-        if (!cleanText) {
+        try {
+            const utterance = new SpeechSynthesisUtterance(texto);
+            utterance.lang = defaultSpeechLanguage;
+            utterance.rate = 1.0;
+            synth.speak(utterance);
+            return true;
+        } catch {
             return false;
         }
-
-        const voice = findSpanishVoice(speechLanguage);
-        const chunks = splitSpeechText(cleanText);
-        let chunkIndex = 0;
-
-        const speakNextChunk = () => {
-            if (requestId !== activeSpeechRequestId) {
-                return;
-            }
-
-            const chunk = chunks[chunkIndex];
-
-            if (!chunk) {
-                return;
-            }
-
-            activeSpeechTimeoutId = window.setTimeout(() => {
-                activeSpeechTimeoutId = null;
-
-                if (requestId !== activeSpeechRequestId) {
-                    return;
-                }
-
-                const utterance = new SpeechSynthesisUtterance(chunk);
-                utterance.lang = voice?.lang || speechLanguage;
-                utterance.rate = 0.95;
-                utterance.pitch = 1;
-                utterance.volume = 1;
-
-                if (voice) {
-                    utterance.voice = voice;
-                }
-
-                utterance.onend = () => {
-                    releaseSpeechReference(utterance);
-
-                    if (requestId !== activeSpeechRequestId) {
-                        return;
-                    }
-
-                    chunkIndex++;
-                    speakNextChunk();
-                };
-
-                utterance.onerror = event => {
-                    releaseSpeechReference(utterance);
-
-                    if (requestId !== activeSpeechRequestId
-                        || event?.error === "canceled"
-                        || event?.error === "interrupted") {
-                        return;
-                    }
-
-                    console.error("voiceChat: fallo la sintesis de voz nativa.", event);
-                };
-
-                keepSpeechReference(utterance);
-                synth.speak(utterance);
-
-                if (typeof synth.resume === "function") {
-                    synth.resume();
-                }
-            }, speechRestartDelayMs);
-        };
-
-        speakNextChunk();
-
-        return true;
     }
 
-    if (window.speechSynthesis) {
-        window.speechSynthesis.onvoiceschanged = () => {
-            cachedSpanishVoice = null;
-        };
-    }
-
-    registrarDesbloqueoEnEnvio();
+    registrarDesbloqueoAudio();
 
     return {
         async startRecognition(inputElement, dotNetRef, language) {
@@ -425,12 +187,8 @@ window.voiceChat = (() => {
             activeDotNetRef = null;
         },
 
-        reproducirVoz(text, language) {
-            return reproducirRespuesta(text, language);
-        },
-
-        cancelSpeech() {
-            cancelNativeSpeech();
+        reproducirVoz(texto) {
+            return reproducirRespuesta(texto);
         },
 
         scrollToBottom(element) {
