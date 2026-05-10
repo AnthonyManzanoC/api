@@ -1,15 +1,12 @@
 window.voiceChat = (() => {
     let recognition = null;
     let activeDotNetRef = null;
-    let activeAudio = null;
-    let activeAudioUrl = null;
     let activeSpeechRequestId = 0;
-    let audioUnlocked = false;
+    let cachedSpanishVoice = null;
 
+    const defaultSpeechLanguage = "es-ES";
     const SpeechRecognitionCtor =
         window.SpeechRecognition || window.webkitSpeechRecognition || null;
-    const silentAudioDataUrl =
-        "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 
     function mapError(error) {
         switch (error) {
@@ -21,47 +18,6 @@ window.voiceChat = (() => {
                 return "El navegador no pudo completar el reconocimiento de voz.";
             default:
                 return "No se pudo procesar el dictado por voz. Puedes escribir tu consulta manualmente.";
-        }
-    }
-
-    function registerAudioUnlock() {
-        const unlockAudio = async () => {
-            if (audioUnlocked) {
-                return;
-            }
-
-            try {
-                const probe = new Audio(silentAudioDataUrl);
-                probe.volume = 0;
-
-                const playPromise = probe.play();
-                if (playPromise && typeof playPromise.then === "function") {
-                    await playPromise;
-                }
-
-                probe.pause();
-                probe.currentTime = 0;
-                audioUnlocked = true;
-            } catch (error) {
-                console.error("voiceChat: no se pudo desbloquear el audio del navegador.", error);
-            }
-        };
-
-        ["pointerdown", "touchstart", "keydown"].forEach(eventName => {
-            document.addEventListener(eventName, unlockAudio, { capture: true, passive: true });
-        });
-    }
-
-    function resetActiveAudio() {
-        if (activeAudio) {
-            activeAudio.pause();
-            activeAudio.currentTime = 0;
-            activeAudio = null;
-        }
-
-        if (activeAudioUrl) {
-            URL.revokeObjectURL(activeAudioUrl);
-            activeAudioUrl = null;
         }
     }
 
@@ -88,7 +44,124 @@ window.voiceChat = (() => {
         }
     }
 
-    registerAudioUnlock();
+    function cleanSpeechText(text) {
+        return typeof text === "string"
+            ? text.replace(/\s+/g, " ").trim()
+            : "";
+    }
+
+    function getSpeechSynthesis() {
+        return window.speechSynthesis || null;
+    }
+
+    function getAvailableVoices() {
+        const synth = getSpeechSynthesis();
+
+        if (!synth || typeof synth.getVoices !== "function") {
+            return [];
+        }
+
+        return synth.getVoices();
+    }
+
+    function findSpanishVoice(language) {
+        const voices = getAvailableVoices();
+
+        if (!voices.length) {
+            return null;
+        }
+
+        if (cachedSpanishVoice && voices.includes(cachedSpanishVoice)) {
+            return cachedSpanishVoice;
+        }
+
+        const requestedLanguage = (language || defaultSpeechLanguage).toLowerCase();
+        const normalizeLang = voice => (voice?.lang || "").toLowerCase();
+        const exactLocalVoice = voices.find(voice =>
+            normalizeLang(voice) === requestedLanguage && voice.localService);
+        const exactVoice = voices.find(voice =>
+            normalizeLang(voice) === requestedLanguage);
+        const localSpanishVoice = voices.find(voice =>
+            normalizeLang(voice).startsWith("es-") && voice.localService);
+        const spanishVoice = voices.find(voice =>
+            normalizeLang(voice).startsWith("es-"));
+        const defaultVoice = voices.find(voice => voice.default);
+
+        cachedSpanishVoice =
+            exactLocalVoice ||
+            exactVoice ||
+            localSpanishVoice ||
+            spanishVoice ||
+            defaultVoice ||
+            null;
+
+        return cachedSpanishVoice;
+    }
+
+    function splitSpeechText(text) {
+        const maxLength = 220;
+        const sentences = text.match(/[^.!?;:]+[.!?;:]?/g) || [text];
+        const chunks = [];
+        let current = "";
+
+        const pushCurrent = () => {
+            const value = current.trim();
+
+            if (value) {
+                chunks.push(value);
+            }
+
+            current = "";
+        };
+
+        sentences.forEach(sentence => {
+            const cleanSentence = sentence.trim();
+
+            if (!cleanSentence) {
+                return;
+            }
+
+            if (cleanSentence.length > maxLength) {
+                pushCurrent();
+
+                cleanSentence.split(/\s+/).forEach(word => {
+                    if ((current + " " + word).trim().length > maxLength) {
+                        pushCurrent();
+                    }
+
+                    current = `${current} ${word}`.trim();
+                });
+
+                pushCurrent();
+                return;
+            }
+
+            if ((current + " " + cleanSentence).trim().length > maxLength) {
+                pushCurrent();
+            }
+
+            current = `${current} ${cleanSentence}`.trim();
+        });
+
+        pushCurrent();
+
+        return chunks.length ? chunks : [text];
+    }
+
+    function cancelNativeSpeech() {
+        const synth = getSpeechSynthesis();
+        activeSpeechRequestId++;
+
+        if (synth && typeof synth.cancel === "function") {
+            synth.cancel();
+        }
+    }
+
+    if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = () => {
+            cachedSpanishVoice = null;
+        };
+    }
 
     return {
         async startRecognition(inputElement, dotNetRef, language) {
@@ -147,99 +220,57 @@ window.voiceChat = (() => {
             activeDotNetRef = null;
         },
 
-        async generateAndPlayElevenLabs(text, apiKey, voiceId) {
-            const cleanText = typeof text === "string" ? text.trim() : "";
-            const cleanApiKey = typeof apiKey === "string" ? apiKey.trim() : "";
-            const cleanVoiceId = typeof voiceId === "string" ? voiceId.trim() : "";
+        reproducirVoz(text, language) {
+            const cleanText = cleanSpeechText(text);
+            const synth = getSpeechSynthesis();
 
-            if (!cleanText || !cleanApiKey || !cleanVoiceId) {
+            if (!cleanText
+                || !synth
+                || typeof synth.speak !== "function"
+                || typeof window.SpeechSynthesisUtterance !== "function") {
                 return false;
             }
 
             const requestId = ++activeSpeechRequestId;
+            const speechLanguage = language || defaultSpeechLanguage;
+            const voice = findSpanishVoice(speechLanguage);
+            const chunks = splitSpeechText(cleanText);
 
-            try {
-                const response = await fetch(
-                    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(cleanVoiceId)}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "xi-api-key": cleanApiKey,
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            text: cleanText,
-                            model_id: "eleven_multilingual_v2"
-                        })
-                    });
+            synth.cancel();
 
-                if (!response.ok) {
-                    const errorBody = await response.text();
-                    console.error("voiceChat: ElevenLabs devolvio un error.", {
-                        status: response.status,
-                        body: errorBody
-                    });
-                    return false;
-                }
-
-                const sourceBlob = await response.blob();
-                if (requestId !== activeSpeechRequestId) {
-                    return false;
-                }
-
-                if (!sourceBlob || sourceBlob.size === 0) {
-                    console.error("voiceChat: ElevenLabs devolvio un audio vacio.");
-                    return false;
-                }
-
-                resetActiveAudio();
-
-                const audioBlob = new Blob([sourceBlob], { type: "audio/mpeg" });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                audio.preload = "auto";
-
-                audio.onended = () => {
-                    if (activeAudio === audio) {
-                        activeAudio = null;
-                    }
-
-                    if (activeAudioUrl === audioUrl) {
-                        URL.revokeObjectURL(audioUrl);
-                        activeAudioUrl = null;
-                    }
-                };
-
-                audio.onerror = event => {
-                    console.error("voiceChat: el navegador no pudo reproducir el audio de ElevenLabs.", event);
-
-                    if (activeAudio === audio) {
-                        activeAudio = null;
-                    }
-
-                    if (activeAudioUrl === audioUrl) {
-                        URL.revokeObjectURL(audioUrl);
-                        activeAudioUrl = null;
-                    }
-                };
-
-                activeAudio = audio;
-                activeAudioUrl = audioUrl;
-
-                const playPromise = audio.play();
-                if (playPromise && typeof playPromise.then === "function") {
-                    await playPromise;
-                }
-
-                return true;
-            } catch (error) {
-                if (requestId === activeSpeechRequestId) {
-                    resetActiveAudio();
-                }
-
-                console.error("voiceChat: fallo la llamada directa a ElevenLabs.", error);
-                return false;
+            if (typeof synth.resume === "function") {
+                synth.resume();
             }
+
+            chunks.forEach(chunk => {
+                const utterance = new SpeechSynthesisUtterance(chunk);
+                utterance.lang = voice?.lang || speechLanguage;
+                utterance.rate = 0.95;
+                utterance.pitch = 1;
+                utterance.volume = 1;
+
+                if (voice) {
+                    utterance.voice = voice;
+                }
+
+                utterance.onerror = event => {
+                    if (requestId !== activeSpeechRequestId
+                        || event?.error === "canceled"
+                        || event?.error === "interrupted") {
+                        return;
+                    }
+
+                    console.error("voiceChat: fallo la sintesis de voz nativa.", event);
+                };
+
+                synth.speak(utterance);
+            });
+
+            return true;
+        },
+
+        cancelSpeech() {
+            cancelNativeSpeech();
         },
 
         scrollToBottom(element) {
@@ -251,7 +282,3 @@ window.voiceChat = (() => {
         }
     };
 })();
-
-window.generateAndPlayElevenLabs = function (text, apiKey, voiceId) {
-    return window.voiceChat.generateAndPlayElevenLabs(text, apiKey, voiceId);
-};

@@ -1,0 +1,599 @@
+/* Premium public cinematic layer.
+   This file intentionally sits on top of the existing design system: same pages,
+   same content, richer materials and scroll motion. */
+
+:root {
+    --cinema-ease: cubic-bezier(.22, 1, .36, 1);
+    --cinema-ease-soft: cubic-bezier(.16, 1, .3, 1);
+    --cinema-border: rgba(255,255,255,.42);
+    --cinema-border-dark: rgba(11,31,58,.1);
+    --cinema-shadow: 0 30px 80px rgba(11,31,58,.12);
+    --cinema-shadow-deep: 0 44px 110px rgba(7,22,41,.2);
+    --cinema-platinum: #EEF1F4;
+    --cinema-ink: #07111F;
+    --cinema-sage: #AAB7AE;
+}
+
+html {
+    scroll-padding-top: 128px;
+}
+
+body.cinema-ready {
+    background:
+        linear-gradient(115deg, rgba(255,255,255,.5), rgba(238,241,244,.18) 42%, rgba(248,246,241,0) 74%),
+        var(--ivory);
+}
+
+body.cinema-ready .public-shell {
+    position: relative;
+    isolation: isolate;
+}
+
+body.cinema-ready .public-shell::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .2;
+    background-image:
+        linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(7,17,31,.04) 1px, transparent 1px);
+    background-size: 96px 96px;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.8), transparent 82%);
+}
+
+body.cinema-ready .public-main {
+    overflow: clip;
+}
+
+body.cinema-ready .public-header {
+    border-bottom: 1px solid rgba(11,31,58,.08);
+    background: rgba(255,255,255,.74);
+    backdrop-filter: blur(22px) saturate(1.25);
+    box-shadow: 0 18px 52px rgba(7,22,41,.07);
+    transition:
+        background .35s var(--cinema-ease),
+        box-shadow .35s var(--cinema-ease),
+        border-color .35s var(--cinema-ease);
+}
+
+body.cinema-ready.cinema-scrolled .public-header {
+    background: rgba(255,255,255,.86);
+    box-shadow: 0 22px 64px rgba(7,22,41,.1);
+}
+
+body.cinema-ready .public-nav-links,
+body.cinema-ready .public-topline-pill,
+body.cinema-ready .public-nav-trust span,
+body.cinema-ready .hero-signal-pill,
+body.cinema-ready .svc-trust-pill,
+body.cinema-ready .cx-hero-pill,
+body.cinema-ready .team-directory-badges span,
+body.cinema-ready .footer-pill {
+    backdrop-filter: blur(18px) saturate(1.15);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.48);
+}
+
+body.cinema-ready .public-brand-mono,
+body.cinema-ready .footer-mono,
+body.cinema-ready .cx-info-mono {
+    position: relative;
+    overflow: hidden;
+}
+
+body.cinema-ready .public-brand-mono::after,
+body.cinema-ready .footer-mono::after,
+body.cinema-ready .cx-info-mono::after {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.32) 48%, transparent 62%);
+    transform: translateX(var(--cinema-metal-shift, -40%));
+    pointer-events: none;
+}
+
+/* Cinematic sections */
+body.cinema-ready .hero-v2,
+body.cinema-ready .svc-hero,
+body.cinema-ready .team-directory-hero,
+body.cinema-ready .cx-section {
+    position: relative;
+    isolation: isolate;
+}
+
+body.cinema-ready .hero-v2::before,
+body.cinema-ready .svc-hero::before,
+body.cinema-ready .team-directory-hero::after,
+body.cinema-ready .cx-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .42;
+    background:
+        linear-gradient(112deg, transparent 0 34%, rgba(255,255,255,.14) 48%, transparent 62%),
+        linear-gradient(180deg, rgba(255,255,255,.08), transparent 46%, rgba(0,0,0,.07));
+    transform: translate3d(0, var(--cinema-lift, 0), 0);
+}
+
+body.cinema-ready .hero-v2::after,
+body.cinema-ready .svc-hero::after,
+body.cinema-ready .team-directory-hero::before,
+body.cinema-ready .cx-section::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .16;
+    background-image:
+        linear-gradient(90deg, rgba(255,255,255,.32) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,255,255,.16) 1px, transparent 1px);
+    background-size: 72px 72px;
+    transform: translate3d(0, var(--cinema-grid-lift, 0), 0);
+}
+
+body.cinema-ready .cx-section::after {
+    opacity: .18;
+    background-image:
+        linear-gradient(90deg, rgba(11,31,58,.05) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(11,31,58,.035) 1px, transparent 1px);
+}
+
+body.cinema-ready .hero-v2 > *,
+body.cinema-ready .svc-hero > *,
+body.cinema-ready .team-directory-hero > *,
+body.cinema-ready .cx-section > * {
+    position: relative;
+    z-index: 1;
+}
+
+body.cinema-ready .hero-bg-pattern,
+body.cinema-ready .hero-geo-pattern,
+body.cinema-ready .svc-hero-noise,
+body.cinema-ready .footer-noise {
+    transform: translate3d(0, var(--cinema-bg-lift, 0), 0);
+    transition: transform .08s linear;
+}
+
+body.cinema-ready .hero-v2 .hero-copy {
+    transform: translate3d(0, var(--hero-copy-lift, 0), 0);
+    opacity: var(--hero-copy-opacity, 1);
+}
+
+body.cinema-ready .hero-v2 .hero-contact-card {
+    transform: translate3d(0, var(--hero-card-lift, 0), 0);
+}
+
+/* Reveal choreography */
+body.cinema-ready .cinema-reveal {
+    opacity: 0;
+    transform: translate3d(0, 54px, 0) scale(.982);
+    filter: blur(9px);
+    transition:
+        opacity .92s var(--cinema-ease) var(--cinema-delay, 0ms),
+        transform .92s var(--cinema-ease) var(--cinema-delay, 0ms),
+        filter .92s ease var(--cinema-delay, 0ms);
+    will-change: opacity, transform, filter;
+}
+
+body.cinema-ready .cinema-reveal.cinema-in-view,
+body.cinema-ready .cinema-reveal.visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+}
+
+body.cinema-ready .cinema-reveal.cinema-exiting {
+    filter: blur(1.4px) saturate(.96);
+}
+
+body.cinema-ready .hero-actions > *,
+body.cinema-ready .hero-signal-row > *,
+body.cinema-ready .hero-stats-bar .hero-stat,
+body.cinema-ready .svc-hero-actions > *,
+body.cinema-ready .svc-trust-row > *,
+body.cinema-ready .cx-hero-pills > *,
+body.cinema-ready .team-directory-badges > * {
+    animation: cinema-settle .78s var(--cinema-ease) both;
+    animation-delay: var(--cinema-delay, 0ms);
+}
+
+@keyframes cinema-settle {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 18px, 0) scale(.97);
+        filter: blur(7px);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+        filter: blur(0);
+    }
+}
+
+/* Premium material system */
+body.cinema-ready .hero-contact-card,
+body.cinema-ready .about-img-frame,
+body.cinema-ready .practice-card-v2,
+body.cinema-ready .why-feature,
+body.cinema-ready .trayectoria-stats-v2,
+body.cinema-ready .testimonial-card,
+body.cinema-ready .testi-form-card,
+body.cinema-ready .svc-hero-panel,
+body.cinema-ready .svc-metric-card,
+body.cinema-ready .svc-content-shell,
+body.cinema-ready .servicio-item,
+body.cinema-ready .svc-bottom-band,
+body.cinema-ready .editorial-member,
+body.cinema-ready .team-directory-sidecard,
+body.cinema-ready .team-directory-card,
+body.cinema-ready .team-directory-card-empty,
+body.cinema-ready .cx-form-shell,
+body.cinema-ready .cx-info-card,
+body.cinema-ready .cx-success {
+    position: relative;
+    border-color: var(--cinema-border-dark);
+    box-shadow: var(--cinema-shadow);
+    transition:
+        transform .35s var(--cinema-ease),
+        box-shadow .35s var(--cinema-ease),
+        border-color .35s var(--cinema-ease),
+        background .35s var(--cinema-ease),
+        filter .35s var(--cinema-ease);
+}
+
+body.cinema-ready .hero-contact-card,
+body.cinema-ready .svc-metric-card,
+body.cinema-ready .svc-content-shell,
+body.cinema-ready .svc-bottom-band,
+body.cinema-ready .team-directory-card,
+body.cinema-ready .team-directory-card-empty,
+body.cinema-ready .cx-form-shell {
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.94), rgba(248,246,241,.82)),
+        linear-gradient(180deg, rgba(238,241,244,.26), rgba(255,255,255,0));
+    backdrop-filter: blur(20px) saturate(1.12);
+}
+
+body.cinema-ready .hero-contact-card::before,
+body.cinema-ready .about-img-frame::before,
+body.cinema-ready .practice-card-v2::before,
+body.cinema-ready .why-feature::before,
+body.cinema-ready .testimonial-card::before,
+body.cinema-ready .testi-form-card::before,
+body.cinema-ready .svc-hero-panel::before,
+body.cinema-ready .svc-metric-card::before,
+body.cinema-ready .svc-content-shell::before,
+body.cinema-ready .servicio-item::before,
+body.cinema-ready .svc-bottom-band::before,
+body.cinema-ready .editorial-member::before,
+body.cinema-ready .team-directory-sidecard::before,
+body.cinema-ready .team-directory-card::before,
+body.cinema-ready .cx-form-shell::before,
+body.cinema-ready .cx-info-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--cinema-shine, .34);
+    background:
+        linear-gradient(122deg, rgba(255,255,255,.46), transparent 28% 68%, rgba(255,255,255,.18)),
+        linear-gradient(var(--shine-angle, 118deg), transparent 40%, rgba(255,255,255,.28) 49%, transparent 60%);
+    background-size: 100% 100%, 260% 260%;
+    background-position: center, var(--shine-x, 0%) var(--shine-y, 50%);
+    transition: opacity .35s var(--cinema-ease), background-position .35s var(--cinema-ease);
+}
+
+body.cinema-ready .hero-contact-card > *,
+body.cinema-ready .about-img-frame > *,
+body.cinema-ready .practice-card-v2 > *,
+body.cinema-ready .why-feature > *,
+body.cinema-ready .testimonial-card > *,
+body.cinema-ready .testi-form-card > *,
+body.cinema-ready .svc-hero-panel > *,
+body.cinema-ready .svc-metric-card > *,
+body.cinema-ready .svc-content-shell > *,
+body.cinema-ready .servicio-item > *,
+body.cinema-ready .svc-bottom-band > *,
+body.cinema-ready .editorial-member > *,
+body.cinema-ready .team-directory-sidecard > *,
+body.cinema-ready .team-directory-card > *,
+body.cinema-ready .cx-form-shell > *,
+body.cinema-ready .cx-info-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+body.cinema-ready .practice-card-v2:hover,
+body.cinema-ready .why-feature:hover,
+body.cinema-ready .testimonial-card:hover,
+body.cinema-ready .svc-metric-card:hover,
+body.cinema-ready .servicio-item:hover,
+body.cinema-ready .editorial-member:hover,
+body.cinema-ready .team-directory-card:hover,
+body.cinema-ready .cx-info-item:hover {
+    transform: translate3d(0, -7px, 0) scale(1.008);
+    border-color: rgba(184,150,62,.34);
+    box-shadow: var(--cinema-shadow-deep);
+}
+
+body.cinema-ready .premium-material:hover,
+body.cinema-ready .premium-material:focus-within {
+    --cinema-shine: .54;
+}
+
+body.cinema-ready .editorial-member-photo,
+body.cinema-ready .team-directory-card-photo,
+body.cinema-ready .profile-portrait,
+body.cinema-ready .about-img {
+    transition:
+        transform 1.05s var(--cinema-ease),
+        filter .55s var(--cinema-ease),
+        opacity .55s var(--cinema-ease);
+}
+
+body.cinema-ready .editorial-member:hover .editorial-member-photo,
+body.cinema-ready .team-directory-card:hover .team-directory-card-photo,
+body.cinema-ready .about-img-frame:hover .about-img {
+    transform: scale(1.055);
+    filter: saturate(1.04) contrast(1.08);
+}
+
+/* Buttons and focused form controls */
+body.cinema-ready .btn-hero-primary,
+body.cinema-ready .btn-hero-secondary,
+body.cinema-ready .btn-about-cta,
+body.cinema-ready .btn-primary-gold,
+body.cinema-ready .hcc-cta,
+body.cinema-ready .servicio-cta,
+body.cinema-ready .editorial-link-primary,
+body.cinema-ready .editorial-link-secondary,
+body.cinema-ready .team-directory-card-link,
+body.cinema-ready .team-directory-card-link-alt,
+body.cinema-ready .svc-outline-btn,
+body.cinema-ready .cx-btn-submit,
+body.cinema-ready .footer-cta-primary,
+body.cinema-ready .footer-cta-secondary {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+}
+
+body.cinema-ready .btn-hero-primary::after,
+body.cinema-ready .btn-hero-secondary::after,
+body.cinema-ready .btn-about-cta::after,
+body.cinema-ready .btn-primary-gold::after,
+body.cinema-ready .hcc-cta::after,
+body.cinema-ready .servicio-cta::after,
+body.cinema-ready .editorial-link-primary::after,
+body.cinema-ready .editorial-link-secondary::after,
+body.cinema-ready .team-directory-card-link::after,
+body.cinema-ready .team-directory-card-link-alt::after,
+body.cinema-ready .svc-outline-btn::after,
+body.cinema-ready .cx-btn-submit::after,
+body.cinema-ready .footer-cta-primary::after,
+body.cinema-ready .footer-cta-secondary::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    pointer-events: none;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.34) 48%, transparent 66%);
+    transform: translateX(-115%);
+    transition: transform .75s var(--cinema-ease);
+}
+
+body.cinema-ready .btn-hero-primary:hover::after,
+body.cinema-ready .btn-hero-secondary:hover::after,
+body.cinema-ready .btn-about-cta:hover::after,
+body.cinema-ready .btn-primary-gold:hover::after,
+body.cinema-ready .hcc-cta:hover::after,
+body.cinema-ready .servicio-cta:hover::after,
+body.cinema-ready .editorial-link-primary:hover::after,
+body.cinema-ready .editorial-link-secondary:hover::after,
+body.cinema-ready .team-directory-card-link:hover::after,
+body.cinema-ready .team-directory-card-link-alt:hover::after,
+body.cinema-ready .svc-outline-btn:hover::after,
+body.cinema-ready .cx-btn-submit:hover::after,
+body.cinema-ready .footer-cta-primary:hover::after,
+body.cinema-ready .footer-cta-secondary:hover::after {
+    transform: translateX(115%);
+}
+
+body.cinema-ready .cx-input,
+body.cinema-ready .cx-textarea,
+body.cinema-ready .login-input {
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.62),
+        0 10px 24px rgba(11,31,58,.035);
+}
+
+body.cinema-ready .cx-input:focus,
+body.cinema-ready .cx-textarea:focus {
+    border-color: rgba(184,150,62,.68);
+    box-shadow:
+        0 0 0 4px rgba(255,255,255,.85),
+        0 0 0 7px rgba(184,150,62,.16),
+        0 18px 38px rgba(11,31,58,.08);
+    transform: translateY(-1px);
+}
+
+body.cinema-ready .cx-input-wrap:focus-within .cx-input-icon {
+    color: var(--gold);
+    transform: translateY(-50%) scale(1.06);
+}
+
+body.cinema-ready .cx-textarea:focus,
+body.cinema-ready .cx-input:focus,
+body.cinema-ready .cx-btn-submit:hover:not(:disabled) {
+    transition-duration: .28s;
+}
+
+/* Service accordion as sequential premium cards */
+body.cinema-ready .servicios-acordeon {
+    gap: 1rem;
+}
+
+body.cinema-ready .servicio-item {
+    border-width: 1px;
+    background:
+        linear-gradient(145deg, rgba(255,255,255,.96), rgba(248,246,241,.86)),
+        var(--white);
+}
+
+body.cinema-ready .servicio-item-open {
+    border-color: rgba(184,150,62,.42);
+    box-shadow: var(--cinema-shadow-deep);
+}
+
+body.cinema-ready .servicio-icon-wrap {
+    border: 1px solid rgba(184,150,62,.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+body.cinema-ready .servicio-item-open .servicio-icon-wrap {
+    box-shadow: 0 18px 36px rgba(11,31,58,.18);
+}
+
+/* Team editorial depth */
+body.cinema-ready .editorial-team-stack {
+    gap: clamp(2rem, 4vw, 3.25rem);
+}
+
+body.cinema-ready .editorial-member {
+    border-color: rgba(255,255,255,.58);
+    box-shadow: 0 38px 92px rgba(11,31,58,.13);
+}
+
+body.cinema-ready .editorial-member-media::after,
+body.cinema-ready .team-directory-card-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.12), transparent 42%),
+        linear-gradient(115deg, rgba(255,255,255,.16), transparent 34% 66%, rgba(0,0,0,.12));
+    opacity: .72;
+    transition: opacity .45s var(--cinema-ease);
+}
+
+body.cinema-ready .editorial-member:hover .editorial-member-media::after,
+body.cinema-ready .team-directory-card:hover .team-directory-card-media::after {
+    opacity: .46;
+}
+
+body.cinema-ready .team-directory-hero-grid,
+body.cinema-ready .svc-hero-grid {
+    transform: translate3d(0, var(--cinema-content-lift, 0), 0);
+}
+
+/* Guided contact experience */
+body.cinema-ready .cx-section .row {
+    position: relative;
+    z-index: 1;
+}
+
+body.cinema-ready .cx-form-accent-bar {
+    width: 5px;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.74), transparent 18%),
+        linear-gradient(180deg, var(--gold), var(--gold-light), var(--cinema-sage));
+    box-shadow: 0 0 34px rgba(184,150,62,.24);
+}
+
+body.cinema-ready .cx-info-item {
+    backdrop-filter: blur(16px);
+    transition:
+        transform .3s var(--cinema-ease),
+        background .3s var(--cinema-ease),
+        border-color .3s var(--cinema-ease),
+        box-shadow .3s var(--cinema-ease);
+}
+
+body.cinema-ready .cx-info-item:hover {
+    background: rgba(255,255,255,.095);
+    border-color: rgba(255,255,255,.18);
+}
+
+body.cinema-ready .cx-process-step {
+    transition: transform .32s var(--cinema-ease), opacity .32s var(--cinema-ease);
+}
+
+body.cinema-ready .cx-process-step:hover {
+    transform: translateX(4px);
+}
+
+/* Soft cinematic focus as sections leave the visual center */
+.cinema-soft-focus {
+    filter: blur(.7px) saturate(.94);
+}
+
+body.cinema-ready .cinema-soft-focus .cinema-reveal {
+    opacity: .82;
+}
+
+@media (max-width: 991px) {
+    html {
+        scroll-padding-top: 168px;
+    }
+
+    body.cinema-ready .hero-v2 .hero-copy,
+    body.cinema-ready .hero-v2 .hero-contact-card,
+    body.cinema-ready .team-directory-hero-grid,
+    body.cinema-ready .svc-hero-grid {
+        transform: none;
+        opacity: 1;
+    }
+}
+
+@media (max-width: 576px) {
+    body.cinema-ready .public-shell::before {
+        opacity: .1;
+        background-size: 72px 72px;
+    }
+
+    body.cinema-ready .cinema-reveal {
+        transform: translate3d(0, 34px, 0) scale(.99);
+    }
+
+    body.cinema-ready .practice-card-v2:hover,
+    body.cinema-ready .why-feature:hover,
+    body.cinema-ready .testimonial-card:hover,
+    body.cinema-ready .svc-metric-card:hover,
+    body.cinema-ready .servicio-item:hover,
+    body.cinema-ready .editorial-member:hover,
+    body.cinema-ready .team-directory-card:hover {
+        transform: translate3d(0, -3px, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .001ms !important;
+    }
+
+    body.cinema-ready .cinema-reveal,
+    body.cinema-ready .cinema-reveal.cinema-in-view,
+    body.cinema-ready .cinema-reveal.visible,
+    body.cinema-ready .hero-v2 .hero-copy,
+    body.cinema-ready .hero-v2 .hero-contact-card,
+    body.cinema-ready .team-directory-hero-grid,
+    body.cinema-ready .svc-hero-grid {
+        opacity: 1 !important;
+        transform: none !important;
+        filter: none !important;
+    }
+}
