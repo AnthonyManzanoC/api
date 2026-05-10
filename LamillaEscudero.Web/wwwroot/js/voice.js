@@ -157,6 +157,88 @@ window.voiceChat = (() => {
         }
     }
 
+    function desbloquearAudio(language) {
+        const synth = getSpeechSynthesis();
+
+        if (!synth
+            || typeof synth.speak !== "function"
+            || typeof window.SpeechSynthesisUtterance !== "function") {
+            return false;
+        }
+
+        try {
+            const utterance = new SpeechSynthesisUtterance(" ");
+            utterance.lang = language || defaultSpeechLanguage;
+            utterance.volume = 0;
+            utterance.rate = 1;
+            utterance.pitch = 1;
+
+            if (typeof synth.resume === "function") {
+                synth.resume();
+            }
+
+            synth.speak(utterance);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    function reproducirRespuesta(text, language) {
+        const synth = getSpeechSynthesis();
+
+        if (!synth
+            || typeof synth.speak !== "function"
+            || typeof synth.cancel !== "function"
+            || typeof window.SpeechSynthesisUtterance !== "function") {
+            return false;
+        }
+
+        const requestId = ++activeSpeechRequestId;
+        const speechLanguage = language || defaultSpeechLanguage;
+
+        synth.cancel();
+
+        const cleanText = cleanSpeechText(text);
+
+        if (!cleanText) {
+            return false;
+        }
+
+        const voice = findSpanishVoice(speechLanguage);
+        const chunks = splitSpeechText(cleanText);
+
+        if (typeof synth.resume === "function") {
+            synth.resume();
+        }
+
+        chunks.forEach(chunk => {
+            const utterance = new SpeechSynthesisUtterance(chunk);
+            utterance.lang = voice?.lang || speechLanguage;
+            utterance.rate = 0.95;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+
+            if (voice) {
+                utterance.voice = voice;
+            }
+
+            utterance.onerror = event => {
+                if (requestId !== activeSpeechRequestId
+                    || event?.error === "canceled"
+                    || event?.error === "interrupted") {
+                    return;
+                }
+
+                console.error("voiceChat: fallo la sintesis de voz nativa.", event);
+            };
+
+            synth.speak(utterance);
+        });
+
+        return true;
+    }
+
     if (window.speechSynthesis) {
         window.speechSynthesis.onvoiceschanged = () => {
             cachedSpanishVoice = null;
@@ -215,58 +297,17 @@ window.voiceChat = (() => {
             return true;
         },
 
+        desbloquearAudio,
+
+        reproducirRespuesta,
+
         stopRecognition() {
             stopRecognition();
             activeDotNetRef = null;
         },
 
         reproducirVoz(text, language) {
-            const cleanText = cleanSpeechText(text);
-            const synth = getSpeechSynthesis();
-
-            if (!cleanText
-                || !synth
-                || typeof synth.speak !== "function"
-                || typeof window.SpeechSynthesisUtterance !== "function") {
-                return false;
-            }
-
-            const requestId = ++activeSpeechRequestId;
-            const speechLanguage = language || defaultSpeechLanguage;
-            const voice = findSpanishVoice(speechLanguage);
-            const chunks = splitSpeechText(cleanText);
-
-            synth.cancel();
-
-            if (typeof synth.resume === "function") {
-                synth.resume();
-            }
-
-            chunks.forEach(chunk => {
-                const utterance = new SpeechSynthesisUtterance(chunk);
-                utterance.lang = voice?.lang || speechLanguage;
-                utterance.rate = 0.95;
-                utterance.pitch = 1;
-                utterance.volume = 1;
-
-                if (voice) {
-                    utterance.voice = voice;
-                }
-
-                utterance.onerror = event => {
-                    if (requestId !== activeSpeechRequestId
-                        || event?.error === "canceled"
-                        || event?.error === "interrupted") {
-                        return;
-                    }
-
-                    console.error("voiceChat: fallo la sintesis de voz nativa.", event);
-                };
-
-                synth.speak(utterance);
-            });
-
-            return true;
+            return reproducirRespuesta(text, language);
         },
 
         cancelSpeech() {
