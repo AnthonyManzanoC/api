@@ -1,10 +1,16 @@
+window.mensajesVoz = Array.isArray(window.mensajesVoz)
+    ? window.mensajesVoz
+    : [];
+
 window.voiceChat = (() => {
     let recognition = null;
     let activeDotNetRef = null;
     let activeSpeechRequestId = 0;
+    let activeSpeechTimeoutId = null;
     let cachedSpanishVoice = null;
 
     const defaultSpeechLanguage = "es-ES";
+    const speechRestartDelayMs = 75;
     const SpeechRecognitionCtor =
         window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
@@ -52,6 +58,37 @@ window.voiceChat = (() => {
 
     function getSpeechSynthesis() {
         return window.speechSynthesis || null;
+    }
+
+    function ensureSpeechReferences() {
+        if (!Array.isArray(window.mensajesVoz)) {
+            window.mensajesVoz = [];
+        }
+
+        return window.mensajesVoz;
+    }
+
+    function clearSpeechReferences() {
+        ensureSpeechReferences().length = 0;
+    }
+
+    function releaseSpeechReference(utterance) {
+        const references = ensureSpeechReferences();
+
+        if (references.includes(utterance)) {
+            references.length = 0;
+        }
+    }
+
+    function keepSpeechReference(utterance) {
+        ensureSpeechReferences().push(utterance);
+    }
+
+    function clearPendingSpeechTimeout() {
+        if (activeSpeechTimeoutId !== null) {
+            window.clearTimeout(activeSpeechTimeoutId);
+            activeSpeechTimeoutId = null;
+        }
     }
 
     function getAvailableVoices() {
@@ -151,6 +188,8 @@ window.voiceChat = (() => {
     function cancelNativeSpeech() {
         const synth = getSpeechSynthesis();
         activeSpeechRequestId++;
+        clearPendingSpeechTimeout();
+        clearSpeechReferences();
 
         if (synth && typeof synth.cancel === "function") {
             synth.cancel();
@@ -197,6 +236,8 @@ window.voiceChat = (() => {
         const requestId = ++activeSpeechRequestId;
         const speechLanguage = language || defaultSpeechLanguage;
 
+        clearPendingSpeechTimeout();
+        clearSpeechReferences();
         synth.cancel();
 
         const cleanText = cleanSpeechText(text);
@@ -207,34 +248,69 @@ window.voiceChat = (() => {
 
         const voice = findSpanishVoice(speechLanguage);
         const chunks = splitSpeechText(cleanText);
+        let chunkIndex = 0;
 
-        if (typeof synth.resume === "function") {
-            synth.resume();
-        }
-
-        chunks.forEach(chunk => {
-            const utterance = new SpeechSynthesisUtterance(chunk);
-            utterance.lang = voice?.lang || speechLanguage;
-            utterance.rate = 0.95;
-            utterance.pitch = 1;
-            utterance.volume = 1;
-
-            if (voice) {
-                utterance.voice = voice;
+        const speakNextChunk = () => {
+            if (requestId !== activeSpeechRequestId) {
+                return;
             }
 
-            utterance.onerror = event => {
-                if (requestId !== activeSpeechRequestId
-                    || event?.error === "canceled"
-                    || event?.error === "interrupted") {
+            const chunk = chunks[chunkIndex];
+
+            if (!chunk) {
+                return;
+            }
+
+            activeSpeechTimeoutId = window.setTimeout(() => {
+                activeSpeechTimeoutId = null;
+
+                if (requestId !== activeSpeechRequestId) {
                     return;
                 }
 
-                console.error("voiceChat: fallo la sintesis de voz nativa.", event);
-            };
+                const utterance = new SpeechSynthesisUtterance(chunk);
+                utterance.lang = voice?.lang || speechLanguage;
+                utterance.rate = 0.95;
+                utterance.pitch = 1;
+                utterance.volume = 1;
 
-            synth.speak(utterance);
-        });
+                if (voice) {
+                    utterance.voice = voice;
+                }
+
+                utterance.onend = () => {
+                    releaseSpeechReference(utterance);
+
+                    if (requestId !== activeSpeechRequestId) {
+                        return;
+                    }
+
+                    chunkIndex++;
+                    speakNextChunk();
+                };
+
+                utterance.onerror = event => {
+                    releaseSpeechReference(utterance);
+
+                    if (requestId !== activeSpeechRequestId
+                        || event?.error === "canceled"
+                        || event?.error === "interrupted") {
+                        return;
+                    }
+
+                    console.error("voiceChat: fallo la sintesis de voz nativa.", event);
+                };
+
+                keepSpeechReference(utterance);
+                synth.speak(utterance);
+
+                if (typeof synth.resume === "function") {
+                    synth.resume();
+                }
+            }, speechRestartDelayMs);
+        };
+
+        speakNextChunk();
 
         return true;
     }
