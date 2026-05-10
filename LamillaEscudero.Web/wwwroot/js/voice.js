@@ -10,7 +10,8 @@ window.voiceChat = (() => {
     let cachedSpanishVoice = null;
 
     const defaultSpeechLanguage = "es-ES";
-    const speechRestartDelayMs = 75;
+    const speechRestartDelayMs = 50;
+    const sendUnlockSelector = ".chat-send-btn, .chat-suggestion-btn";
     const SpeechRecognitionCtor =
         window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
@@ -60,6 +61,19 @@ window.voiceChat = (() => {
         return window.speechSynthesis || null;
     }
 
+    function isSpeechActive(synth) {
+        return Boolean(synth && (synth.speaking || synth.pending));
+    }
+
+    function cancelSpeechIfActive(synth) {
+        if (synth && typeof synth.cancel === "function" && isSpeechActive(synth)) {
+            synth.cancel();
+            return true;
+        }
+
+        return false;
+    }
+
     function ensureSpeechReferences() {
         if (!Array.isArray(window.mensajesVoz)) {
             window.mensajesVoz = [];
@@ -74,9 +88,10 @@ window.voiceChat = (() => {
 
     function releaseSpeechReference(utterance) {
         const references = ensureSpeechReferences();
+        const index = references.indexOf(utterance);
 
-        if (references.includes(utterance)) {
-            references.length = 0;
+        if (index >= 0) {
+            references.splice(index, 1);
         }
     }
 
@@ -191,9 +206,7 @@ window.voiceChat = (() => {
         clearPendingSpeechTimeout();
         clearSpeechReferences();
 
-        if (synth && typeof synth.cancel === "function") {
-            synth.cancel();
-        }
+        cancelSpeechIfActive(synth);
     }
 
     function desbloquearAudio(language) {
@@ -206,21 +219,49 @@ window.voiceChat = (() => {
         }
 
         try {
-            const utterance = new SpeechSynthesisUtterance(" ");
+            const utterance = new SpeechSynthesisUtterance("");
             utterance.lang = language || defaultSpeechLanguage;
             utterance.volume = 0;
             utterance.rate = 1;
             utterance.pitch = 1;
+            utterance.onend = () => releaseSpeechReference(utterance);
+            utterance.onerror = () => releaseSpeechReference(utterance);
 
             if (typeof synth.resume === "function") {
                 synth.resume();
             }
 
+            keepSpeechReference(utterance);
             synth.speak(utterance);
+            window.setTimeout(() => releaseSpeechReference(utterance), 1000);
             return true;
         } catch {
             return false;
         }
+    }
+
+    function desbloquearAudioDesdeEnvio(event) {
+        const target = event?.target;
+
+        if (!target
+            || typeof target.closest !== "function"
+            || !target.closest(sendUnlockSelector)) {
+            return;
+        }
+
+        desbloquearAudio(defaultSpeechLanguage);
+    }
+
+    function registrarDesbloqueoEnEnvio() {
+        if (window.__voiceChatSendUnlockRegistered
+            || typeof document === "undefined"
+            || typeof document.addEventListener !== "function") {
+            return;
+        }
+
+        window.__voiceChatSendUnlockRegistered = true;
+        const unlockEventName = window.PointerEvent ? "pointerdown" : "click";
+        document.addEventListener(unlockEventName, desbloquearAudioDesdeEnvio, true);
     }
 
     function reproducirRespuesta(text, language) {
@@ -238,7 +279,7 @@ window.voiceChat = (() => {
 
         clearPendingSpeechTimeout();
         clearSpeechReferences();
-        synth.cancel();
+        cancelSpeechIfActive(synth);
 
         const cleanText = cleanSpeechText(text);
 
@@ -320,6 +361,8 @@ window.voiceChat = (() => {
             cachedSpanishVoice = null;
         };
     }
+
+    registrarDesbloqueoEnEnvio();
 
     return {
         async startRecognition(inputElement, dotNetRef, language) {
