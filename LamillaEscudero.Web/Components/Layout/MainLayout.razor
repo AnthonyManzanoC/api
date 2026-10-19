@@ -1,7 +1,8 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
 <div class="public-shell">
-    <a href="#main-content" class="public-skip-link">Saltar al contenido</a>
+    <a href="@(new Uri(Navigation.Uri).PathAndQuery + "#main-content")" class="public-skip-link">Saltar al contenido</a>
     <header class="public-header">
         <div class="public-topline">
             <div class="container-fluid px-4">
