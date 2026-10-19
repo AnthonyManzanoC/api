@@ -7,6 +7,9 @@
     var rafId = 0;
     var mutationTimer = 0;
     var decorated = new WeakSet();
+    var observedReveals = new WeakSet();
+    var activeReveals = new Set();
+    var currentRoot = null;
     var sections = [];
 
     var revealSelectors = [
@@ -97,7 +100,7 @@
         var capped = Math.min(index, 8);
         el.style.setProperty('--cinema-delay', (capped * 72) + 'ms');
 
-        if (reduceMotion) {
+        if (reduceMotion || !window.IntersectionObserver) {
             el.classList.add('cinema-in-view', 'visible');
         }
     }
@@ -125,18 +128,28 @@
     }
 
     function observeReveals(root) {
-        if (revealObserver) revealObserver.disconnect();
-
+        activeReveals.forEach(function (el) {
+            if (!root.contains(el) || reduceMotion) {
+                revealObserver.unobserve(el);
+                activeReveals.delete(el);
+                observedReveals.delete(el);
+            }
+        });
         var items = root.querySelectorAll(revealSelectors);
         items.forEach(decorateReveal);
 
-        if (reduceMotion) return;
+        if (reduceMotion || !window.IntersectionObserver) {
+            items.forEach(function (el) { el.classList.add('cinema-in-view', 'visible'); });
+            return;
+        }
 
-        revealObserver = new IntersectionObserver(function (entries) {
+        if (!revealObserver) revealObserver = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('cinema-in-view', 'visible');
                     entry.target.classList.remove('cinema-exiting');
+                    revealObserver.unobserve(entry.target);
+                    activeReveals.delete(entry.target);
                 } else if (entry.boundingClientRect.top < 0) {
                     entry.target.classList.add('cinema-exiting');
                 } else {
@@ -148,7 +161,13 @@
             rootMargin: '0px 0px -8% 0px'
         });
 
-        items.forEach(function (el) { revealObserver.observe(el); });
+        items.forEach(function (el) {
+            if (!observedReveals.has(el)) {
+                observedReveals.add(el);
+                activeReveals.add(el);
+                revealObserver.observe(el);
+            }
+        });
     }
 
     function collectSections(root) {
@@ -161,10 +180,17 @@
 
     function updateScrollState() {
         rafId = 0;
+        if (!getPublicRoot()) return;
         var scrollY = window.scrollY || window.pageYOffset || 0;
         var height = window.innerHeight || 1;
+        var scrollRange = document.documentElement.scrollHeight - height;
+        document.documentElement.style.setProperty('--reading-progress',
+            (scrollRange > 0 ? clamp(scrollY / scrollRange, 0, 1) : 0).toFixed(3));
+        var scrollButton = document.getElementById('scrollTopBtn');
+        if (scrollButton) scrollButton.classList.toggle('visible', scrollY > 500);
 
         document.body.classList.toggle('cinema-scrolled', scrollY > 24);
+        if (reduceMotion) return;
         var globalProgress = Math.min(scrollY / 1200, 1);
         document.documentElement.style.setProperty('--cinema-scroll', globalProgress.toFixed(3));
         document.documentElement.style.setProperty('--cinema-metal-shift', (-40 + globalProgress * 8).toFixed(2) + '%');
@@ -201,10 +227,21 @@
 
     function refresh() {
         var root = getPublicRoot();
-        if (!root) return;
+        if (root !== currentRoot) {
+            if (revealObserver) revealObserver.disconnect();
+            observedReveals = new WeakSet();
+            activeReveals.clear();
+            currentRoot = root;
+        }
+        if (!root) {
+            sections = [];
+            document.body.classList.remove('cinema-ready', 'cinema-scrolled', 'cinema-reduced-motion');
+            document.documentElement.style.removeProperty('--reading-progress');
+            return;
+        }
 
         document.body.classList.add('cinema-ready');
-        if (reduceMotion) document.body.classList.add('cinema-reduced-motion');
+        document.body.classList.toggle('cinema-reduced-motion', reduceMotion);
 
         decorateMaterials(root);
         collectSections(root);
@@ -222,11 +259,30 @@
         window.addEventListener('scroll', requestScrollUpdate, { passive: true });
         window.addEventListener('resize', requestScrollUpdate, { passive: true });
         document.addEventListener('enhancedload', scheduleRefresh);
+        document.addEventListener('click', function (event) {
+            var menu = document.querySelector('.public-mobile-menu[open]');
+            if (menu && (!menu.contains(event.target) || event.target.closest('a'))) menu.open = false;
+        });
+        document.addEventListener('keydown', function (event) {
+            if (event.key !== 'Escape') return;
+            var menu = document.querySelector('.public-mobile-menu[open]');
+            if (menu) {
+                menu.open = false;
+                menu.querySelector('summary').focus();
+            }
+        });
 
-        var root = getPublicRoot();
-        if (root && window.MutationObserver) {
+        if (window.MutationObserver) {
             var observer = new MutationObserver(scheduleRefresh);
-            observer.observe(root, { childList: true, subtree: true });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        var motionPreference = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+        if (motionPreference && motionPreference.addEventListener) {
+            motionPreference.addEventListener('change', function (event) {
+                reduceMotion = event.matches;
+                refresh();
+            });
         }
 
         window.LamillaPremiumMotion = {

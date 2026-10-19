@@ -101,7 +101,7 @@
 
                 @if (!string.IsNullOrWhiteSpace(mensaje))
                 {
-                    <div class="cx-success">
+                    <div class="cx-success" role="status" aria-live="polite">
                         <div class="cx-success-ring">
                             <i class="bi bi-check2"></i>
                         </div>
@@ -127,60 +127,73 @@
                                 </div>
                             </div>
 
-                            <EditForm Model="form" OnValidSubmit="Enviar">
+                            <EditForm Model="form" OnValidSubmit="Enviar" aria-busy="@enviando.ToString().ToLowerInvariant()">
                                 <DataAnnotationsValidator />
                                 <ValidationSummary class="cx-validation-summary" />
+
+                                @if (!string.IsNullOrWhiteSpace(errorEnvio))
+                                {
+                                    <div class="cx-validation-summary" role="alert">
+                                        <strong>No pudimos enviar su consulta.</strong>
+                                        <p class="mb-0">@errorEnvio</p>
+                                    </div>
+                                }
 
                                 <div class="row g-4">
 
                                     <div class="col-md-6">
                                         <div class="cx-field">
-                                            <label class="cx-label">Nombre completo <span class="cx-required">*</span></label>
+                                            <label class="cx-label" for="consulta-nombre">Nombre completo <span class="cx-required">*</span></label>
                                             <div class="cx-input-wrap">
-                                                <i class="bi bi-person cx-input-icon"></i>
-                                                <InputText class="cx-input" @bind-Value="form.Nombre" placeholder="Su nombre completo" />
+                                                <i class="bi bi-person cx-input-icon" aria-hidden="true"></i>
+                                                <InputText id="consulta-nombre" class="cx-input" type="text" autocomplete="name" maxlength="200" required aria-required="true" disabled="@enviando" @bind-Value="form.Nombre" placeholder="Su nombre completo" />
                                             </div>
+                                            <ValidationMessage For="@(() => form.Nombre)" />
                                         </div>
                                     </div>
 
                                     <div class="col-md-6">
                                         <div class="cx-field">
-                                            <label class="cx-label">Correo electrónico</label>
+                                            <label class="cx-label" for="consulta-email">Correo electrónico</label>
                                             <div class="cx-input-wrap">
-                                                <i class="bi bi-envelope cx-input-icon"></i>
-                                                <InputText class="cx-input" @bind-Value="form.Email" placeholder="correo@ejemplo.com" />
+                                                <i class="bi bi-envelope cx-input-icon" aria-hidden="true"></i>
+                                                <InputText id="consulta-email" class="cx-input" type="email" autocomplete="email" maxlength="200" disabled="@enviando" @bind-Value="form.Email" placeholder="correo@ejemplo.com" />
                                             </div>
+                                            <ValidationMessage For="@(() => form.Email)" />
                                         </div>
                                     </div>
 
                                     <div class="col-md-6">
                                         <div class="cx-field">
-                                            <label class="cx-label">Teléfono</label>
+                                            <label class="cx-label" for="consulta-telefono">Teléfono</label>
                                             <div class="cx-input-wrap">
-                                                <i class="bi bi-telephone cx-input-icon"></i>
-                                                <InputText class="cx-input" @bind-Value="form.Telefono" placeholder="+593 9..." />
+                                                <i class="bi bi-telephone cx-input-icon" aria-hidden="true"></i>
+                                                <InputText id="consulta-telefono" class="cx-input" type="tel" autocomplete="tel" maxlength="30" disabled="@enviando" @bind-Value="form.Telefono" placeholder="+593 9..." />
                                             </div>
+                                            <ValidationMessage For="@(() => form.Telefono)" />
                                         </div>
                                     </div>
 
                                     <div class="col-md-6">
                                         <div class="cx-field">
-                                            <label class="cx-label">Asunto <span class="cx-required">*</span></label>
+                                            <label class="cx-label" for="consulta-asunto">Asunto <span class="cx-required">*</span></label>
                                             <div class="cx-input-wrap">
-                                                <i class="bi bi-tag cx-input-icon"></i>
-                                                <InputText class="cx-input" @bind-Value="form.Asunto" placeholder="Motivo de consulta" />
+                                                <i class="bi bi-tag cx-input-icon" aria-hidden="true"></i>
+                                                <InputText id="consulta-asunto" class="cx-input" type="text" autocomplete="off" maxlength="200" required aria-required="true" disabled="@enviando" @bind-Value="form.Asunto" placeholder="Motivo de consulta" />
                                             </div>
+                                            <ValidationMessage For="@(() => form.Asunto)" />
                                         </div>
                                     </div>
 
                                     <div class="col-12">
                                         <div class="cx-field">
-                                            <label class="cx-label">Mensaje <span class="cx-required">*</span></label>
+                                            <label class="cx-label" for="consulta-mensaje">Mensaje <span class="cx-required">*</span></label>
                                             <div class="cx-textarea-wrap">
-                                                <InputTextArea class="cx-textarea" rows="5"
+                                                <InputTextArea id="consulta-mensaje" class="cx-textarea" rows="5" autocomplete="off" maxlength="2000" required aria-required="true" disabled="@enviando"
                                                                @bind-Value="form.Mensaje"
                                                                placeholder="Describa brevemente su situación o necesidad legal..." />
                                             </div>
+                                            <ValidationMessage For="@(() => form.Mensaje)" />
                                         </div>
                                     </div>
 
@@ -191,13 +204,13 @@
                                     <button class="cx-btn-submit" type="submit" disabled="@enviando">
                                         @if (enviando)
                                         {
-                                            <span class="cx-spinner"></span>
+                                            <span class="cx-spinner" aria-hidden="true"></span>
                                             <span>Enviando...</span>
                                         }
                                         else
                                         {
                                             <i class="bi bi-send-fill"></i>
-                                            <span>Enviar consulta</span>
+                                            <span>@(errorEnvio is null ? "Enviar consulta" : "Reintentar envío")</span>
                                             <i class="bi bi-arrow-right cx-btn-arrow"></i>
                                         }
                                     </button>
@@ -303,7 +316,7 @@
                         @if (urlMapa is not null)
                         {
                             <div class="cx-map-wrap">
-                                <iframe src="@urlMapa"
+                                <iframe src="@urlMapa" title="Ubicación del estudio jurídico"
                                         width="100%" height="250"
                                         style="border:0; display:block;"
                                         allowfullscreen loading="lazy"
@@ -1771,11 +1784,28 @@
 </style>
 
 @code {
-    private LamillaEscudero.Application.Models.Consultas.ConsultaWebCreateRequest form = new();
+    [SupplyParameterFromQuery(Name = "servicio")]
+    public string? ServicioSeleccionado { get; set; }
+
+    private ConsultaContactoForm form = new();
     private string? mensaje;
+    private string? errorEnvio;
     private bool enviando;
+    private bool asuntoContextualAplicado;
     private LamillaEscudero.Application.Models.Configuracion.ConfiguracionEstudioResponse? config;
     private string? urlMapa;
+
+    protected override void OnParametersSet()
+    {
+        if (asuntoContextualAplicado || string.IsNullOrWhiteSpace(ServicioSeleccionado)) return;
+
+        asuntoContextualAplicado = true;
+        if (string.IsNullOrWhiteSpace(form.Asunto))
+        {
+            var asunto = ServicioSeleccionado.Trim();
+            form.Asunto = asunto.Length > 200 ? asunto[..200] : asunto;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -1810,12 +1840,60 @@
 
     private async Task Enviar()
     {
+        if (enviando) return;
+
         enviando = true;
-        var resp = await ConsultaService.CreateAsync(form);
-        mensaje = resp is not null
-            ? "Su consulta fue enviada correctamente. Pronto le contactaremos."
-            : "Ocurrió un error al enviar. Por favor intente nuevamente.";
-        if (resp is not null) form = new();
-        enviando = false;
+        errorEnvio = null;
+
+        try
+        {
+            var respuesta = await ConsultaService.CreateAsync(new ConsultaWebCreateRequest
+            {
+                Nombre = form.Nombre.Trim(),
+                Email = string.IsNullOrWhiteSpace(form.Email) ? null : form.Email.Trim(),
+                Telefono = string.IsNullOrWhiteSpace(form.Telefono) ? null : form.Telefono.Trim(),
+                Asunto = form.Asunto.Trim(),
+                Mensaje = form.Mensaje.Trim()
+            });
+
+            if (respuesta is null)
+            {
+                errorEnvio = "Sus datos siguen en el formulario. Puede reintentar el envío o comunicarse con el estudio por los canales de contacto.";
+                return;
+            }
+
+            mensaje = "Su consulta fue enviada correctamente. Pronto le contactaremos.";
+            form = new();
+        }
+        catch
+        {
+            errorEnvio = "El servicio no está disponible en este momento. Sus datos siguen en el formulario; vuelva a intentarlo en unos minutos.";
+        }
+        finally
+        {
+            enviando = false;
+        }
+    }
+
+    private sealed class ConsultaContactoForm
+    {
+        [Required(ErrorMessage = "Ingrese su nombre completo.")]
+        [StringLength(200, ErrorMessage = "El nombre admite hasta 200 caracteres.")]
+        public string Nombre { get; set; } = string.Empty;
+
+        [EmailAddress(ErrorMessage = "Ingrese un correo electrónico válido.")]
+        [StringLength(200, ErrorMessage = "El correo admite hasta 200 caracteres.")]
+        public string? Email { get; set; }
+
+        [StringLength(30, ErrorMessage = "El teléfono admite hasta 30 caracteres.")]
+        public string? Telefono { get; set; }
+
+        [Required(ErrorMessage = "Indique el asunto de su consulta.")]
+        [StringLength(200, ErrorMessage = "El asunto admite hasta 200 caracteres.")]
+        public string Asunto { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Describa brevemente su consulta.")]
+        [StringLength(2000, ErrorMessage = "El mensaje admite hasta 2000 caracteres.")]
+        public string Mensaje { get; set; } = string.Empty;
     }
 }

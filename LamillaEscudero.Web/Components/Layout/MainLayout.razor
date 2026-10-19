@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 
 <div class="public-shell">
+    <a href="#main-content" class="public-skip-link">Saltar al contenido</a>
     <header class="public-header">
         <div class="public-topline">
             <div class="container-fluid px-4">
@@ -9,7 +10,7 @@
                         <span class="public-topline-pill">
                             <i class="bi bi-shield-check me-1"></i>Estudio Jurídico Integral
                         </span>
-                        <span class="public-topline-text">Babahoyo · Cobertura nacional · Estrategia legal de alto nivel</span>
+                        <span class="public-topline-text">Babahoyo, Ecuador <span aria-hidden="true">/</span> Cobertura nacional</span>
                     </div>
                     <a href="/contacto" class="public-topline-link">Primera consulta orientativa</a>
                 </div>
@@ -17,11 +18,11 @@
         </div>
 
         <div class="container-fluid px-4">
-            <nav class="public-nav">
-                <a href="/" class="public-brand">
+            <nav class="public-nav" aria-label="Navegación principal">
+                <a href="/" class="public-brand" aria-label="Lamilla Escudero y Asociados, inicio">
                     <span class="public-brand-mono">LE</span>
                     <div class="public-brand-text">
-                        <span class="public-brand-name">Ab Lamilla Escudero</span>
+                        <span class="public-brand-name">Lamilla Escudero</span>
                         <span class="public-brand-sub">&amp; Asociados</span>
                     </div>
                 </a>
@@ -44,11 +45,24 @@
                         <span><i class="bi bi-person-heart"></i>Trato humano</span>
                     </div>
                 </div>
+                <details class="public-mobile-menu">
+                    <summary><span>Menú</span><i class="bi bi-list" aria-hidden="true"></i></summary>
+                    <div class="public-mobile-panel">
+                        <span class="public-mobile-caption">Lamilla Escudero &amp; Asociados</span>
+                        <NavLink href="/" Match="NavLinkMatch.All">Inicio <i class="bi bi-arrow-up-right" aria-hidden="true"></i></NavLink>
+                        <NavLink href="/equipo">Nuestro equipo <i class="bi bi-arrow-up-right" aria-hidden="true"></i></NavLink>
+                        <NavLink href="/servicios">Servicios jurídicos <i class="bi bi-arrow-up-right" aria-hidden="true"></i></NavLink>
+                        <NavLink href="/contacto">Solicitar consulta <i class="bi bi-arrow-up-right" aria-hidden="true"></i></NavLink>
+                        <a href="/login" class="public-mobile-login"><i class="bi bi-person-lock" aria-hidden="true"></i> Acceso interno</a>
+                        <p>Solidez jurídica. Trato humano.</p>
+                    </div>
+                </details>
             </nav>
         </div>
+        <div class="public-reading-progress" aria-hidden="true"></div>
     </header>
 
-    <main class="public-main">
+    <main class="public-main" id="main-content" tabindex="-1">
         @Body
     </main>
 

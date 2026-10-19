@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @inject LamillaEscudero.Application.Abstractions.IServicioOfrecidoService ServicioService
 @inject LamillaEscudero.Application.Abstractions.IMiembroEstudioService MiembroService
 @inject LamillaEscudero.Application.Abstractions.IConfiguracionEstudioService ConfigService
@@ -93,10 +93,10 @@
                 </div>
                 <div class="hero-eyebrow-wrap">
                     <span class="hero-eyebrow-line"></span>
-                    <p class="hero-eyebrow">Estudio Jurídico de excelencia</p>
+                    <p class="hero-eyebrow">Criterio. Estrategia. Compromiso.</p>
                 </div>
                 <h1 class="hero-title">
-                    Solidez jurídica,<br /><em>trato humano.</em>
+                    Tu tranquilidad.<br /><em>Nuestra prioridad.</em>
                 </h1>
                 <p class="hero-subtitle">
                     Más de una década acompañando a nuestros clientes en las decisiones legales
@@ -112,26 +112,32 @@
                         <span class="btn-hero-glow"></span>
                         <i class="bi bi-chat-text me-2"></i>Consulta gratuita
                     </a>
-                    <a href="#nosotros" class="btn-hero-secondary">
-                        <i class="bi bi-play-circle me-2"></i>Conócenos
+                    <a href="/servicios" class="btn-hero-secondary">
+                        Explorar especialidades<i class="bi bi-arrow-up-right ms-2" aria-hidden="true"></i>
                     </a>
                 </div>
                 <div class="hero-stats-bar">
                     <div class="hero-stat">
-                        <strong class="counter" data-target="15" data-prefix="" data-suffix="+">0</strong><span>Años de experiencia</span>
+                        <strong class="counter" data-target="15" data-prefix="" data-suffix="+">15+</strong><span>Años de experiencia</span>
                     </div>
                     <div class="hero-stat-div"></div>
                     <div class="hero-stat">
-                        <strong class="counter" data-target="500" data-prefix="+">0</strong><span>Casos gestionados</span>
+                        <strong class="counter" data-target="500" data-prefix="+">+500</strong><span>Casos gestionados</span>
                     </div>
                     <div class="hero-stat-div"></div>
                     <div class="hero-stat">
-                        <strong class="counter" data-target="98" data-suffix="%">0</strong><span>Satisfacción</span>
+                        <strong class="counter" data-target="98" data-suffix="%">98%</strong><span>Satisfacción</span>
                     </div>
                 </div>
             </div>
             <div class="hero-contact-card reveal">
                 <div class="hcc-accent"></div>
+                <div class="atelier-card-intro">
+                    <div class="atelier-seal" aria-hidden="true"><span>LE</span></div>
+                    <span class="atelier-kicker">Tu caso merece atención</span>
+                    <h2>El primer paso<br />es conversar.</h2>
+                    <p>Cuéntanos qué necesitas. Te ayudamos a encontrar una dirección clara.</p>
+                </div>
                 <div class="hcc-header">
                     <span class="hcc-tag"><i class="bi bi-telephone-inbound me-1"></i>Contacto directo</span>
                 </div>
@@ -200,6 +206,21 @@
     <a href="#nosotros" class="hero-scroll-indicator" aria-label="Ir a nosotros">
         <i class="bi bi-chevron-down"></i>
     </a>
+</section>
+
+<section class="atelier-path" aria-labelledby="atelier-path-title">
+    <div class="container public-section-shell mx-auto atelier-path-inner">
+        <div class="atelier-path-heading">
+            <span class="atelier-kicker">Claridad desde el inicio</span>
+            <h2 id="atelier-path-title">Una ruta a tu medida.</h2>
+            <a href="/contacto">Empezar una conversación <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+        </div>
+        <ol class="atelier-path-steps">
+            <li><span class="atelier-step-number">01</span><div><h3>Te escuchamos</h3><p>Conocemos tu situación y lo que necesitas proteger.</p></div></li>
+            <li><span class="atelier-step-number">02</span><div><h3>Estudiamos tu caso</h3><p>Revisamos el contexto y las alternativas legales.</p></div></li>
+            <li><span class="atelier-step-number">03</span><div><h3>Trazamos la estrategia</h3><p>Definimos contigo los siguientes pasos.</p></div></li>
+        </ol>
+    </div>
 </section>
 
 @* ════════════════════════════════════════════════════════════════
@@ -575,6 +596,7 @@
                         {
                             var idx = i;
                             <button class="testi-dot @(idx == _carruselIndex ? "active" : "")"
+                                    type="button" aria-label="Ver testimonio @(idx + 1)" aria-pressed="@(idx == _carruselIndex ? "true" : "false")"
                                     @onclick="() => IrASlide(idx)"></button>
                         }
                     </div>
@@ -607,8 +629,8 @@
                         @if (!_enviado)
                         {
                             <div class="mb-4 text-start">
-                                <label class="testi-form-label">Tu nombre *</label>
-                                <input class="form-control testi-input w-100" placeholder="Ej: María García"
+                                <label class="testi-form-label" for="testimonio-nombre">Tu nombre *</label>
+                                <input id="testimonio-nombre" autocomplete="name" class="form-control testi-input w-100" placeholder="Ej: María García"
                                        @bind="_nuevoNombre" maxlength="150" />
                             </div>
 
@@ -619,6 +641,7 @@
                                     {
                                         var estrella = i;
                                         <button type="button" class="btn btn-link p-0 text-decoration-none"
+                                                aria-label="@(estrella == 1 ? "1 estrella" : $"{estrella} estrellas")" aria-pressed="@(estrella == _nuevaCalificacion ? "true" : "false")"
                                                 @onclick="() => _nuevaCalificacion = estrella">
                                             <i class="bi @(estrella <= _nuevaCalificacion ? "bi-star-fill" : "bi-star")"></i>
                                         </button>
@@ -627,8 +650,8 @@
                             </div>
 
                             <div class="mb-4 text-start">
-                                <label class="testi-form-label">Tu comentario *</label>
-                                <textarea class="form-control testi-input w-100" rows="3"
+                                <label class="testi-form-label" for="testimonio-comentario">Tu comentario *</label>
+                                <textarea id="testimonio-comentario" class="form-control testi-input w-100" rows="3"
                                           placeholder="Cuéntenos su experiencia con el estudio..."
                                           @bind="_nuevoComentario" maxlength="1000"></textarea>
                             </div>
@@ -703,8 +726,8 @@
                 <a href="/contacto" class="btn-cta-white">
                     <i class="bi bi-send-fill me-2"></i>Solicitar consulta
                 </a>
-                <a href="/contacto" class="btn-cta-outline-white">
-                    <i class="bi bi-telephone-fill me-2"></i>Llamar ahora
+                <a href="@(!string.IsNullOrWhiteSpace(config?.TelefonoContacto) ? $"tel:{System.Text.RegularExpressions.Regex.Replace(config.TelefonoContacto, @"[^\d+]", "")}" : "/contacto")" class="btn-cta-outline-white">
+                    <i class="bi bi-telephone-fill me-2"></i>Hablar con el estudio
                 </a>
             </div>
         </div>
@@ -714,7 +737,7 @@
 @* ════════════════════════════════════════════════════════════════
    FLOTANTES — Scroll to top
    ════════════════════════════════════════════════════════════════ *@
-<button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Volver arriba">
+<button class="scroll-top-btn" id="scrollTopBtn" type="button" onclick="window.scrollTo({top:0,behavior:'auto'})" aria-label="Volver arriba">
     <i class="bi bi-chevron-up"></i>
 </button>
 
@@ -2849,61 +2872,6 @@
     }
 </style>
 
-@* ── Scripts: reveal, counter, scroll-to-top ────────────────────── *@
-<script>
-    (function() {
-        /* ─ IntersectionObserver Reveal ─────────────────────────── */
-        function initReveal() {
-            var io = new IntersectionObserver(function(entries) {
-                entries.forEach(function(e) {
-                    if (e.isIntersecting) e.target.classList.add('visible');
-                });
-            }, { threshold: 0.11, rootMargin: '0px 0px -30px 0px' });
-            document.querySelectorAll('.reveal').forEach(function(el) { io.observe(el); });
-        }
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initReveal);
-        } else {
-            initReveal();
-        }
-        window._revealInit = initReveal;
-
-        /* ─ Counter animation ───────────────────────────────────── */
-        function animateCounters() {
-            document.querySelectorAll('.counter').forEach(function(el) {
-                if (el.dataset.counted) return;
-                var rect = el.getBoundingClientRect();
-                if (rect.top < window.innerHeight && rect.bottom > 0) {
-                    el.dataset.counted = '1';
-                    var target  = parseInt(el.dataset.target, 10);
-                    var prefix  = (el.dataset.prefix !== undefined) ? el.dataset.prefix : (el.dataset.suffix === '%' ? '' : '+');
-                    var suffix  = el.dataset.suffix || '';
-                    var dur     = 1800;
-                    var start   = performance.now();
-                    function step(ts) {
-                        var p = Math.min((ts - start) / dur, 1);
-                        var eased = 1 - Math.pow(1 - p, 3); /* ease-out-cubic */
-                        var val = Math.floor(eased * target);
-                        el.textContent = prefix + val + suffix;
-                        if (p < 1) requestAnimationFrame(step);
-                        else el.textContent = prefix + target + suffix;
-                    }
-                    requestAnimationFrame(step);
-                }
-            });
-        }
-        window.addEventListener('scroll', animateCounters, { passive: true });
-        animateCounters();
-        /* ─ Scroll to top button ────────────────────────────────── */
-        var scrollBtn = document.getElementById('scrollTopBtn');
-        if (scrollBtn) {
-            window.addEventListener('scroll', function() {
-                scrollBtn.classList.toggle('visible', window.scrollY > 500);
-            }, { passive: true });
-        }
-    })();
-</script>
-
 @code {
     private class EducacionItem
     {
@@ -3005,7 +2973,7 @@
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        try { await JS.InvokeVoidAsync("eval", "window._revealInit && window._revealInit()"); }
+        try { await JS.InvokeVoidAsync("LamillaPremiumMotion.refresh"); }
         catch { }
     }
 
@@ -3032,6 +3000,8 @@
 
     private async Task EnviarTestimonio()
     {
+        if (_enviando) return;
+
         if (string.IsNullOrWhiteSpace(_nuevoNombre) || string.IsNullOrWhiteSpace(_nuevoComentario))
         {
             _mensajeEnvio = "Por favor completa tu nombre y comentario.";
